@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { ipcRenderer } = require('electron');
 
 // Path to notes.json in /data directory (relative to project root)
 const NOTES_FILE = path.join(__dirname, '..', 'data', 'notes.json');
@@ -9,6 +10,17 @@ let saveTimeout = null;
 let currentComp = null;
 let notesData = {};
 let searchQuery = '';
+
+// System messages (Swedish only)
+const SYSTEM_MESSAGES = {
+    noResults: 'Inga resultat hittades',
+    noCompsMatch: 'Inga kompositioner matchar dina items.',
+    enterItems: 'Ange items för att se matchande kompositioner.',
+    addCompExists: 'En komposition med det namnet finns redan.',
+    deleteLastComp: 'Du kan inte ta bort den sista kompositionen.',
+    deleteConfirm: (comp) => `Är du säker på att du vill ta bort "${capitalizeCompName(comp)}"?`,
+    saved: 'Sparat!'
+};
 
 // Get comp order from notesData keys, sorted alphabetically
 function getCompOrder() {
@@ -45,13 +57,17 @@ function loadNotes() {
 function saveNotes() {
     if (!currentComp) return;
     try {
+        // Get content from contenteditable div instead of textarea
+        const editorDiv = document.getElementById('comp-notes-editor');
+        const notesContent = editorDiv ? editorDiv.innerHTML : '';
+        
         // If the comp is an object, update notes and preserve items
         if (notesData[currentComp] && typeof notesData[currentComp] === 'object') {
-            notesData[currentComp].notes = document.getElementById('comp-textarea').value;
+            notesData[currentComp].notes = notesContent;
         } else {
             // If not, convert to new format with empty items
             notesData[currentComp] = {
-                notes: document.getElementById('comp-textarea').value,
+                notes: notesContent,
                 items: []
             };
         }
@@ -116,7 +132,7 @@ function createNavigation() {
     if (filteredComps.length === 0 && searchQuery) {
         const noResults = document.createElement('div');
         noResults.className = 'no-search-results';
-        noResults.textContent = SYSTEM_MESSAGES[language].noResults;
+        noResults.textContent = SYSTEM_MESSAGES.noResults;
         noResults.style.padding = '1rem';
         noResults.style.color = '#707070';
         noResults.style.textAlign = 'center';
@@ -153,6 +169,7 @@ function createNavigation() {
 
 // Switch to a specific comp
 function switchToComp(comp) {
+    console.log('Switching to comp:', comp);
     // Update active button
     document.querySelectorAll('.nav-button').forEach(btn => {
         btn.classList.remove('active');
@@ -186,10 +203,9 @@ function switchToComp(comp) {
     document.getElementById('no-selection').classList.add('hidden');
     document.getElementById('tab-content').classList.remove('hidden');
     
-    // Update title and textarea
+    // Update title
     document.getElementById('current-comp-title').textContent = capitalizeCompName(comp);
-    const textarea = document.getElementById('comp-textarea');
-    textarea.setAttribute('spellcheck', 'false');
+    
     // Get notes and items for the comp (new structure)
     let notesText = '';
     let itemsArr = [];
@@ -200,33 +216,31 @@ function switchToComp(comp) {
         notesText = notesData[comp] || '';
         itemsArr = [];
     }
+    
+    console.log('Comp data:', { comp, notesText: notesText.substring(0, 50), itemsArr });
 
-    // Update textarea with highlighted search matches if searching
-    if (searchQuery && searchQuery.trim() !== '') {
-        textarea.value = notesText;
-    } else {
-        textarea.value = notesText;
-    }
-
-    // Show items for the comp
+    // Get or create items div
     let itemsDiv = document.getElementById('comp-items');
     if (!itemsDiv) {
         itemsDiv = document.createElement('div');
         itemsDiv.id = 'comp-items';
         itemsDiv.className = 'comp-items';
-        const tabHeader = document.querySelector('.tab-header');
+        const tabContent = document.getElementById('tab-content');
+        const tabHeader = tabContent.querySelector('.tab-header');
         if (tabHeader) {
             tabHeader.insertAdjacentElement('afterend', itemsDiv);
         }
     }
-    // Add an input for editing items
+    
+    // Update items div content
     itemsDiv.innerHTML = `
         <strong>Items:</strong>
         <input id="comp-items-input" class="comp-items-input" type="text" value="${itemsArr.join(', ')}" placeholder="Sword, Bow, Rod">
         <button id="save-items-btn" class="save-items-btn" title="Spara items">💾</button>
-        <span id="items-saved-msg" class="items-saved-msg" style="display:none; margin-left:8px; color:#4caf50; font-size:0.95em;">${SYSTEM_MESSAGES[language].saved}</span>
+        <span id="items-saved-msg" class="items-saved-msg" style="display:none; margin-left:8px; color:#4caf50; font-size:0.95em;">${SYSTEM_MESSAGES.saved}</span>
     `;
-    // Add save logic
+    
+    // Add save logic for items
     const itemsInput = document.getElementById('comp-items-input');
     const saveBtn = document.getElementById('save-items-btn');
     const savedMsg = document.getElementById('items-saved-msg');
@@ -239,7 +253,7 @@ function switchToComp(comp) {
                 notesData[comp] = { notes: notesText, items: newItems };
             }
             saveNotes();
-            savedMsg.textContent = SYSTEM_MESSAGES[language].saved;
+            savedMsg.textContent = SYSTEM_MESSAGES.saved;
             savedMsg.style.display = 'inline';
             setTimeout(() => { savedMsg.style.display = 'none'; }, 1200);
         });
@@ -250,6 +264,15 @@ function switchToComp(comp) {
                 itemsInput.blur();
             }
         });
+    }
+
+    // Update contenteditable div with HTML content
+    const editorDiv = document.getElementById('comp-notes-editor');
+    if (editorDiv) {
+        console.log('Setting editor HTML, length:', notesText.length);
+        editorDiv.innerHTML = notesText || '';
+        // Ensure the editor is visible and focused
+        editorDiv.style.display = '';
     }
 
     // Show delete button
@@ -287,7 +310,7 @@ function addComp() {
     
     // Check if comp already exists
     if (trimmedName in notesData) {
-        alert(SYSTEM_MESSAGES[language].addCompExists);
+        alert(SYSTEM_MESSAGES.addCompExists);
         input.focus();
         return;
     }
@@ -325,7 +348,7 @@ function addComp() {
 function showDeleteCompModal(comp) {
     const modal = document.getElementById('delete-comp-modal');
     const message = document.getElementById('delete-comp-message');
-    message.textContent = SYSTEM_MESSAGES[language].deleteConfirm(comp);
+    message.textContent = SYSTEM_MESSAGES.deleteConfirm(comp);
     modal.setAttribute('data-comp-to-delete', comp);
     modal.classList.remove('hidden');
 }
@@ -353,7 +376,7 @@ function deleteComp() {
     
     // Don't allow deleting if it's the only comp
     if (compOrder.length <= 1) {
-        alert(SYSTEM_MESSAGES[language].deleteLastComp);
+        alert(SYSTEM_MESSAGES.deleteLastComp);
         hideDeleteCompModal();
         return;
     }
@@ -453,9 +476,9 @@ function deleteComp() {
 
 // Setup textarea auto-save
 function setupAutoSave() {
-    const textarea = document.getElementById('comp-textarea');
-    if (textarea) {
-        textarea.addEventListener('input', debouncedSave);
+    const editorDiv = document.getElementById('comp-notes-editor');
+    if (editorDiv) {
+        editorDiv.addEventListener('input', debouncedSave);
     }
 }
 
@@ -466,11 +489,13 @@ function setupSearch() {
     searchInput.addEventListener('input', (e) => {
         searchQuery = e.target.value;
         createNavigation();
-        // Optionally, update the current comp's textarea with highlighted matches
+        // Clear editor display - don't show highlighted matches
         if (currentComp) {
-            const textarea = document.getElementById('comp-textarea');
+            const editorDiv = document.getElementById('comp-notes-editor');
             const notesText = notesData[currentComp] || '';
-            textarea.value = notesText; // Always show plain text in textarea
+            if (editorDiv && typeof notesData[currentComp] === 'object') {
+                editorDiv.innerHTML = notesData[currentComp].notes || '';
+            }
         }
     });
 }
@@ -502,7 +527,7 @@ function setupPlannerInterface() {
     function updatePlannerResults() {
         const input = itemsInput.value.trim().toLowerCase();
         if (!input) {
-            resultsDiv.innerHTML = `<div class="planner-empty-message">${SYSTEM_MESSAGES[language].enterItems}</div>`;
+            resultsDiv.innerHTML = `<div class="planner-empty-message">${SYSTEM_MESSAGES.enterItems}</div>`;
             return;
         }
         const selectedItems = input.split(',').map(s => s.trim()).filter(Boolean);
@@ -512,7 +537,7 @@ function setupPlannerInterface() {
             return selectedItems.every(item => data.items.map(i => i.toLowerCase()).includes(item));
         });
         if (matchingComps.length === 0) {
-            resultsDiv.innerHTML = `<div class="planner-empty-message">${SYSTEM_MESSAGES[language].noCompsMatch}</div>`;
+            resultsDiv.innerHTML = `<div class="planner-empty-message">${SYSTEM_MESSAGES.noCompsMatch}</div>`;
             return;
         }
         resultsDiv.innerHTML = matchingComps.map(([comp, data]) =>
@@ -540,11 +565,65 @@ function setupPlannerInterface() {
     updatePlannerResults();
 }
 
+// Setup image paste handler
+function setupImagePaste() {
+    const editorDiv = document.getElementById('comp-notes-editor');
+    if (!editorDiv) return;
+
+    editorDiv.addEventListener('paste', async (e) => {
+        e.preventDefault();
+        
+        const items = e.clipboardData.items;
+        let imageFound = false;
+        
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                imageFound = true;
+                const blob = items[i].getAsFile();
+                const reader = new FileReader();
+                
+                reader.onload = async (event) => {
+                    const base64data = event.target.result.split(',')[1];
+                    const timestamp = Date.now();
+                    const filename = `image-${timestamp}.png`;
+                    
+                    try {
+                        const result = await ipcRenderer.invoke('save-image', base64data, filename);
+                        if (result.success) {
+                            // Insert image tag into editor
+                            const imgPath = `../data/images/${filename}`;
+                            const imgTag = `<img src="${imgPath}" alt="pasted-image" style="max-width:100%; border-radius:4px; margin:0.5rem 0;">`;
+                            
+                            // Insert at cursor position using execCommand
+                            document.execCommand('insertHTML', false, imgTag);
+                            
+                            // Auto-save after inserting image
+                            debouncedSave();
+                        }
+                    } catch (error) {
+                        console.error('Error saving image:', error);
+                        alert('Failed to save image: ' + error.message);
+                    }
+                };
+                
+                reader.readAsDataURL(blob);
+            }
+        }
+        
+        // If no image, handle normal paste
+        if (!imageFound) {
+            const text = e.clipboardData.getData('text/plain');
+            document.execCommand('insertText', false, text);
+        }
+    });
+}
+
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     loadNotes();
     createNavigation();
     setupAutoSave();
+    setupImagePaste();
     
     // Setup add button (do it here to ensure DOM is ready)
     const addBtn = document.getElementById('add-comp-btn');
@@ -641,19 +720,4 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
-    // Add language switcher
-    const langSwitcher = document.createElement('select');
-    langSwitcher.id = 'lang-switcher';
-    langSwitcher.style.marginLeft = 'auto';
-    langSwitcher.innerHTML = `
-        <option value="sv">Svenska</option>
-        <option value="en">English</option>
-    `;
-    langSwitcher.value = language;
-    langSwitcher.addEventListener('change', (e) => {
-        setLanguage(e.target.value);
-    });
-    const header = document.querySelector('header');
-    if (header) header.appendChild(langSwitcher);
 });

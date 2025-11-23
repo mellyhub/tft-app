@@ -25,7 +25,7 @@
     ]
   },
   "slayer": {
-    "notes": "- slam tidiga bruiser items på briar (BT, hoj)\n- kan spela med tidig ixtal 3 (briar, qiyana, neeko, millio)\n- aatrox bis: titans + BT + rageblade/qss\n- silvermere dawn + blue buff = huge\n- belveth bra artifact holder (rfc, titanic hydra)\n- https://x.com/demacianraptor/status/1991914487927243151",
+    "notes": "- slam tidiga bruiser items på briar (BT, hoj)\n- kan spela med tidig ixtal 3 (briar, qiyana, neeko, millio)\n- aatrox bis: titans + BT + rageblade/qss\n- silvermere dawn + blue buff = huge\n- belveth bra artifact holder (rfc, titanic hydra)\n- https://x.com/demacianraptor/status/1991914487927243151<div><img src=\"../data/images/image-1763917836133.png\" alt=\"pasted-image\"></div>",
     "items": [
       "Sword",
       "Glove",
@@ -43,7 +43,7 @@
     ]
   },
   "void": {
-    "notes": "- kaisa flex board (bronze for life): https://x.com/bossoskills1/status/1992071085865705823\n- kaisa vill ha caster items",
+    "notes": "- kaisa flex board (bronze for life): https://x.com/bossoskills1/status/1992071085865705823\n- caster items till kaisa<div>- bis void = adren med rageblade, annars spikes<br><div><img src=\"../data/images/image-1763918682092.png\" alt=\"pasted-image\"></div><div><img src=\"../data/images/image-1763918685740.png\" alt=\"pasted-image\"></div></div>",
     "items": [
       "Sword",
       "Bow",
@@ -51,7 +51,7 @@
     ]
   },
   "shadow isles": {
-    "notes": "- viego reroll: https://x.com/robinsongz/status/1991543224591348107\n- kan spela runt viego + kalista\n- viego behöver edge of night + sustain (hoj, bt, gunblade)\n- andra bra viego items: rageblade, titans, GS, rfc",
+    "notes": "- viego reroll: https://x.com/robinsongz/status/1991543224591348107\n- kan spela runt viego + kalista\n- viego behöver edge of night + sustain (hoj, bt, gunblade)\n- andra bra viego items: rageblade, titans, GS, rfc<div><img src=\"../data/images/image-1763918669127.png\" alt=\"pasted-image\"></div>",
     "items": [
       "Sword",
       "Glove",
@@ -63,7 +63,7 @@
     "items": []
   },
   "bilgewater": {
-    "notes": "- kräver giga combat augment för winstreak (t.ex no pivot no scout)\n- prioritera stats, items, och lesser dupes över units\n- lvl 7 gp reroll -----> https://www.metatft.com/team-builder/team_66eff603-7cd8-4ec0-86d5-31380756c2de -----> https://x.com/sologesangtv/status/1991514215111110691\n- bt + hoj på gp unlockar aatrox\n- ge tanks och casters till tahm kench (hp + ap)",
+    "notes": "- kräver giga combat augment för winstreak (t.ex no pivot no scout)\n- prioritera stats, items, och lesser dupes över units\n- lvl 7 gp reroll -----&gt; https://www.metatft.com/team-builder/team_66eff603-7cd8-4ec0-86d5-31380756c2de -----&gt; https://x.com/sologesangtv/status/1991514215111110691\n- bt + hoj på gp unlockar aatrox\n- ge tanks och casters till tahm kench (hp + ap)<div><img src=\"../data/images/image-1763918595386.png\" alt=\"pasted-image\"><img src=\"../data/images/image-1763918605322.png\" alt=\"pasted-image\"></div>",
     "items": [
       "Glove"
     ]
@@ -80,7 +80,7 @@
     "items": []
   },
   "bard reroll": {
-    "notes": "- https://x.com/techzzeng/status/1991309947787973016\n- sion bis spirit visage, dclaw, bramble\n- artifacts/radiants: talisman, void gauntlet, darkin aegis",
+    "notes": "- https://x.com/techzzeng/status/1991309947787973016\n- sion bis spirit visage, dclaw, bramble\n- artifacts/radiants: talisman, void gauntlet, darkin aegis<div><img src=\"../data/images/image-1763918569406.png\" alt=\"pasted-image\"></div>",
     "items": [
       "Bow",
       "Cloak",
@@ -92,7 +92,7 @@
     "items": []
   },
   "freljord ashe trynd reroll": {
-    "notes": "- (cap voli, aatrox, kindred): https://tftacademy.com/tierlist/comps/set-16-ashe-trynd",
+    "notes": "- (cap voli, aatrox, kindred): https://tftacademy.com/tierlist/comps/set-16-ashe-trynd<div><img src=\"../data/images/image-1763918625989.png\" alt=\"pasted-image\"></div>",
     "items": [
       "Sword",
       "Bow",
@@ -100,11 +100,15 @@
     ]
   },
   "freljord fast 8 yunara": {
-    "notes": "- bronze for life instawin: https://x.com/dishsoaptft/status/1991694484611174529\n- annan variant med braum + voli: https://x.com/demacianraptor/status/1991041091693400505",
+    "notes": "- bronze for life instawin: https://x.com/dishsoaptft/status/1991694484611174529\n- annan variant med braum + voli: https://x.com/demacianraptor/status/1991041091693400505<div><img src=\"../data/images/image-1763918637914.png\" alt=\"pasted-image\"></div><div><img src=\"../data/images/image-1763918646594.png\" alt=\"pasted-image\"></div>",
     "items": [
       "Bow",
       "Rod",
       "Cloak"
     ]
+  },
+  "piltover t-hex": {
+    "notes": "- rövdåligt om du inte har emblem\n- water exalt + echo engine = op\n- Overload → Rockets → Echo Engine starkt om har bra tank items\n- thex items: bt, steraks, gs\n- eternal pact thex?? 🧑‍🍳",
+    "items": []
   }
 }
