@@ -25,7 +25,7 @@
     ]
   },
   "slayer": {
-    "notes": "- slam tidiga bruiser items på briar (BT, hoj)\n- kan spela med tidig ixtal 3 (briar, qiyana, neeko, millio)\n- aatrox bis: titans + BT + rageblade/qss\n- silvermere dawn + blue buff = huge\n- belveth bra artifact holder (rfc, titanic hydra)\n- https://x.com/demacianraptor/status/1991914487927243151<div><img src=\"../data/images/image-1763917836133.png\" alt=\"pasted-image\"></div>",
+    "notes": "- slam tidiga bruiser items på briar (BT, hoj)<div><div>- kan spela med tidig ixtal 3 (briar, qiyana, neeko, millio)<div>- void flex angle om du har adrenaline mutation<br></div><div>- augments: \n</div><div>    tiny but deadly / precision &amp; grace = autowin\n</div><div>    Unsealed from Steel --&gt; Darkin Bow --&gt; Bel'Veth :) \n</div><div>    celestial blessing hjälper dig unlocka aatrox med bara BT</div><div>    TG augments</div><div>- BIS:</div><div><span style=\"font-size: clamp(0.9rem, 1.5vw, 1rem); letter-spacing: 0.01em;\">    Belveth: Kraken + QSS + Flexible 3rd (ideally damage item like Giant Slayer</span></div><div>    Aatrox: BT + CC Immunity (Titans or QSS) + Flexible 3rd (Rageblade typically)</div><div>    Gangplank: Can play double Omnivamp + Titans or IE-based builds</div><div>    Swain: Evenshroud + Vow</div><div>    Fiddlesticks: Any random AP you get</div><div>    Ambessa: Leftover Melee</div><div>- artifacts/radiants: </div><div>    Radiant TG</div><div>    Mittens Aatrox</div><div>    Death's Defiance Aatrox</div><div>    RFC Gangplank or Bel'Veth (build full damage)</div><div>    Flickerblade or Hellfire Hatchet Bel'Veth</div><div><span style=\"font-size: clamp(0.9rem, 1.5vw, 1rem); letter-spacing: 0.01em;\">    (kan vara bra? titanic hydra, silvermere dawn + blue buff)</span></div><div>- https://x.com/demacianraptor/status/1991914487927243151<div>- https://www.reddit.com/r/CompetitiveTFT/comments/1p3xnqh/slayers_comp_guide_by_gm_blue/<br><div><img src=\"../data/images/image-1763917836133.png\" alt=\"pasted-image\"></div></div></div></div></div>",
     "items": [
       "Sword",
       "Glove",
@@ -108,7 +108,7 @@
     ]
   },
   "piltover t-hex": {
-    "notes": "- rövdåligt om du inte har emblem\n- water exalt + echo engine = op\n- Overload → Rockets → Echo Engine starkt om har bra tank items\n- thex items: bt, steraks, gs\n- eternal pact thex?? 🧑‍🍳",
+    "notes": "<div>- emblem på vi, rövdåligt utan</div><div>- ap items till seraphine/azir\n- water exalt + echo engine = op\n- Overload → Rockets → Echo Engine starkt om har bra tank items\n- thex items: bt, steraks, gs</div><div>- sac oriana för thex\n- eternal pact thex?? 🧑‍🍳</div>",
     "items": []
   }
 }
