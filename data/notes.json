@@ -1,0 +1,110 @@
+{
+  "yordle": {
+    "notes": "- kräver bra econ augment/encounter eftersom du behöver guld för 3 stars och lvl 8\n- huge med prismatic ticket + tidig yordle 6\n- rulla lvl 6 för tristana om du har ad items, annars kan du rusha lvl 8\n- rumble håller kennen items\n- spela ziggs över poppy\n- trist är bra med ie + gs\n- lulu pref shojin\n- teemo håller morello/red buff",
+    "items": [
+      "Sword",
+      "Tear",
+      "Glove"
+    ]
+  },
+  "ionia": {
+    "notes": "- om du öppnar med ionia + bows: \n- kan finnas en reroll angle om du har yasuo + sword opener\n- kan spela runt yunara carry\n- extremt starkt om du får 10 ionia augment på 3-2\n- kan spela för high cap med sylas ifall du håller j4/garen/lux",
+    "items": [
+      "Bow",
+      "Sword",
+      "Crit"
+    ]
+  },
+  "targon asol": {
+    "notes": "- spela med shojin/rageblade opener\n- fiska efter mana gen items till asol\n- spela för att få alla unlocks ASAP\n- lvl 9 board: taric + diana + leona + braum + asol + aphelios + anivia + liss + zoe",
+    "items": [
+      "Sword",
+      "Tear",
+      "Bow",
+      "Rod"
+    ]
+  },
+  "slayer": {
+    "notes": "- slam tidiga bruiser items på briar (BT, hoj)\n- kan spela med tidig ixtal 3 (briar, qiyana, neeko, millio)\n- aatrox bis: titans + BT + rageblade/qss\n- silvermere dawn + blue buff = huge\n- belveth bra artifact holder (rfc, titanic hydra)\n- https://x.com/demacianraptor/status/1991914487927243151",
+    "items": [
+      "Sword",
+      "Glove",
+      "Cloak"
+    ]
+  },
+  "noxus": {
+    "notes": "- stark opener om du får tidig draven, spela för winstreak\n- leblanc håller mel items, briar håller ambessa items\n- kan finnas en draven/darius reroll angle\n- draven med kraken är huge pga quickstriker, ie är bait",
+    "items": []
+  },
+  "demacia": {
+    "notes": "- giga starkt om du får demacia augment på 2-1\n- kan rulla lite lvl 7 för att hitta dina 2 stars eller potentiellt vayne 3 star\n- kan spela flex med 7 demacia + leona och diana carry",
+    "items": [
+      "Glove"
+    ]
+  },
+  "void": {
+    "notes": "- kaisa flex board (bronze for life): https://x.com/bossoskills1/status/1992071085865705823\n- kaisa vill ha caster items",
+    "items": [
+      "Sword",
+      "Bow",
+      "Rod"
+    ]
+  },
+  "shadow isles": {
+    "notes": "- viego reroll: https://x.com/robinsongz/status/1991543224591348107\n- kan spela runt viego + kalista\n- viego behöver edge of night + sustain (hoj, bt, gunblade)\n- andra bra viego items: rageblade, titans, GS, rfc",
+    "items": [
+      "Sword",
+      "Glove",
+      "Bow"
+    ]
+  },
+  "shurima": {
+    "notes": "- secrets of the sands är crazy\n- kan spelas med 4 targon + seraphine",
+    "items": []
+  },
+  "bilgewater": {
+    "notes": "- kräver giga combat augment för winstreak (t.ex no pivot no scout)\n- prioritera stats, items, och lesser dupes över units\n- lvl 7 gp reroll -----> https://www.metatft.com/team-builder/team_66eff603-7cd8-4ec0-86d5-31380756c2de -----> https://x.com/sologesangtv/status/1991514215111110691\n- bt + hoj på gp unlockar aatrox\n- ge tanks och casters till tahm kench (hp + ap)",
+    "items": [
+      "Glove"
+    ]
+  },
+  "xin hero augment": {
+    "notes": "- kan fungera med yasuo reroll (vertikal ionia)\n- zaheen och xin samtidigt räknas inte för traits",
+    "items": [
+      "Sword",
+      "Crit"
+    ]
+  },
+  "rumble hero augment": {
+    "notes": "- spela inte den här skiten",
+    "items": []
+  },
+  "bard reroll": {
+    "notes": "- https://x.com/techzzeng/status/1991309947787973016\n- sion bis spirit visage, dclaw, bramble\n- artifacts/radiants: talisman, void gauntlet, darkin aegis",
+    "items": [
+      "Bow",
+      "Cloak",
+      "Belt"
+    ]
+  },
+  "cruel pact": {
+    "notes": "- ez targon asol angle\n- pre lvl till 7 på 2-1 och rulla ner på 3-1",
+    "items": []
+  },
+  "freljord ashe trynd reroll": {
+    "notes": "- (cap voli, aatrox, kindred): https://tftacademy.com/tierlist/comps/set-16-ashe-trynd",
+    "items": [
+      "Sword",
+      "Bow",
+      "Cloak"
+    ]
+  },
+  "freljord fast 8 yunara": {
+    "notes": "- bronze for life instawin: https://x.com/dishsoaptft/status/1991694484611174529\n- annan variant med braum + voli: https://x.com/demacianraptor/status/1991041091693400505",
+    "items": [
+      "Bow",
+      "Rod",
+      "Cloak"
+    ]
+  }
+}

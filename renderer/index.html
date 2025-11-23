@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Set 16</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Set 16</h1>
+            <div class="search-container">
+                <input type="text" id="search-input" class="search-input" placeholder="Sök i anteckningar...">
+                <button id="clear-search-btn" class="clear-search-btn hidden" type="button" title="Rensa sökning">×</button>
+            </div>
+        </header>
+        
+        <div class="main-content">
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h2>Kompositioner</h2>
+                </div>
+                <nav id="comp-nav">
+                    <!-- Tabs will be dynamically generated here -->
+                </nav>
+                <div class="sidebar-footer">
+                    <button id="add-comp-btn" class="add-comp-btn" type="button">+ Lägg till</button>
+                    <button id="planner-tab-btn" class="add-comp-btn" type="button" style="margin-top:0.5rem;">Planner</button>
+                </div>
+            </aside>
+            <main class="content-area" id="notes-interface">
+                <div class="tab-content-container">
+                    <div id="no-selection" class="no-selection">
+                        <p>Välj en komposition från sidopanelen för att visa anteckningar</p>
+                    </div>
+                    <div id="tab-content" class="tab-content hidden">
+                        <div class="tab-header">
+                            <h2 id="current-comp-title"></h2>
+                            <button id="delete-current-comp-btn" class="delete-header-btn" type="button" title="Ta bort komposition">🗑️</button>
+                        </div>
+                        <textarea id="comp-textarea" placeholder="Skriv dina anteckningar här..."></textarea>
+                    </div>
+                </div>
+            </main>
+            <main class="content-area" id="planner-interface" style="display:none;">
+                <div class="tab-content-container">
+                    <div class="tab-content">
+                        <div class="tab-header">
+                            <h2>Planner</h2>
+                        </div>
+                        <div class="planner-empty-message">
+                            <p>Planner-gränssnittet är tomt (än så länge).</p>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <!-- Add Composition Modal -->
+    <div id="add-comp-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Lägg till komposition</h3>
+            <input type="text" id="comp-name-input" placeholder="Ange namn på kompositionen..." autofocus>
+            <div class="modal-buttons">
+                <button id="modal-cancel-btn" class="modal-btn cancel-btn">Avbryt</button>
+                <button id="modal-add-btn" class="modal-btn add-btn">Lägg till</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-comp-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Ta bort komposition</h3>
+            <p id="delete-comp-message">Är du säker på att du vill ta bort denna komposition?</p>
+            <div class="modal-buttons">
+                <button id="delete-modal-cancel-btn" class="modal-btn cancel-btn">Avbryt</button>
+                <button id="delete-modal-confirm-btn" class="modal-btn delete-btn">Ta bort</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="renderer.js"></script>
+</body>
+</html>

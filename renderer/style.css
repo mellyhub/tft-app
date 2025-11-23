@@ -1,0 +1,637 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+header {
+    background-color: #2d2d2d;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #404040;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+header h1 {
+    font-size: clamp(1.1rem, 2vw, 1.5rem);
+    font-weight: 600;
+    color: #ffffff;
+    white-space: nowrap;
+    flex-shrink: 0;
+    /* Update app title to Set 16 if referenced in CSS content */
+}
+
+.search-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    max-width: 400px;
+    min-width: 200px;
+}
+
+.search-input {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    background-color: #1a1a1a;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    color: #e0e0e0;
+    font-size: 0.9rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.search-input:focus {
+    border-color: #606060;
+}
+
+.search-input::placeholder {
+    color: #707070;
+}
+
+.clear-search-btn {
+    background-color: transparent;
+    border: none;
+    color: #b0b0b0;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.clear-search-btn:hover {
+    background-color: #404040;
+    color: #ffffff;
+}
+
+.clear-search-btn.hidden {
+    display: none;
+}
+
+.main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.sidebar {
+    width: 220px;
+    min-width: 180px;
+    max-width: 300px;
+    background-color: #252525;
+    border-right: 1px solid #404040;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.sidebar-header {
+    padding: 0.75rem 0.75rem 0.5rem 0.75rem;
+    border-bottom: 1px solid #404040;
+    flex-shrink: 0;
+}
+
+.sidebar-header h2 {
+    font-size: clamp(0.75rem, 1.5vw, 0.9rem);
+    font-weight: 600;
+    color: #b0b0b0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar nav {
+    display: flex;
+    flex-direction: column;
+    padding: 0.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.nav-button {
+    padding: 1rem 0.75rem;
+    background-color: transparent;
+    border: none;
+    color: #b0b0b0;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: clamp(0.85rem, 1.5vw, 0.95rem);
+    transition: all 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.nav-button:hover {
+    background-color: #333333;
+    color: #ffffff;
+}
+
+.nav-button.active {
+    background-color: #404040;
+    color: #ffffff;
+    font-weight: 500;
+}
+
+.sidebar-footer {
+    padding: 0.5rem;
+    border-top: 1px solid #404040;
+    flex-shrink: 0;
+}
+
+.add-comp-btn {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    background-color: #2d2d2d;
+    border: 1px solid #404040;
+    color: #b0b0b0;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: clamp(0.8rem, 1.5vw, 0.9rem);
+    transition: all 0.2s;
+    pointer-events: auto;
+    z-index: 10;
+    position: relative;
+    white-space: nowrap;
+}
+
+.add-comp-btn:hover {
+    background-color: #333333;
+    color: #ffffff;
+    border-color: #505050;
+}
+
+.content-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.tab-content-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: clamp(0.75rem, 2vw, 1.5rem);
+    overflow: hidden;
+    min-width: 0;
+}
+
+.no-selection {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #707070;
+    font-size: 1rem;
+}
+
+.no-selection.hidden {
+    display: none;
+}
+
+.tab-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.tab-content.hidden {
+    display: none;
+}
+
+.tab-header {
+    margin-bottom: clamp(0.5rem, 1.5vw, 1rem);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    min-width: 0;
+}
+
+.tab-header h2 {
+    font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+    color: #ffffff;
+    font-weight: 600;
+    flex: 1;
+    margin: 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.delete-header-btn {
+    background-color: transparent;
+    border: 1px solid #404040;
+    color: #b0b0b0;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: clamp(0.9rem, 1.5vw, 1rem);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+}
+
+.delete-header-btn:hover {
+    background-color: #d32f2f;
+    border-color: #d32f2f;
+    color: #ffffff;
+}
+
+textarea {
+    flex: 1;
+    background-color: #2d2d2d;
+    color: #e0e0e0;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    padding: clamp(0.75rem, 1.5vw, 1rem);
+    font-size: clamp(0.9rem, 1.5vw, 1rem);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    line-height: 1.7;
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    min-width: 0;
+    min-height: 0;
+    letter-spacing: 0.01em;
+    /* Disable spellcheck underline in Chromium browsers */
+    spellcheck: false;
+}
+
+textarea:focus {
+    border-color: #606060;
+}
+
+textarea::placeholder {
+    color: #707070;
+}
+
+/* Search highlight */
+.search-highlight {
+    background-color: #ffd700;
+    color: #1a1a1a;
+    padding: 0.1em 0.2em;
+    border-radius: 2px;
+    font-weight: 500;
+}
+
+.nav-button mark.search-highlight {
+    background-color: #ffd700;
+    color: #1a1a1a;
+}
+
+/* Scrollbar styling */
+.sidebar nav::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar nav::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+
+.sidebar nav::-webkit-scrollbar-thumb {
+    background: #404040;
+    border-radius: 3px;
+}
+
+.sidebar nav::-webkit-scrollbar-thumb:hover {
+    background: #505050;
+}
+
+textarea::-webkit-scrollbar {
+    width: 10px;
+}
+
+textarea::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+
+textarea::-webkit-scrollbar-thumb {
+    background: #404040;
+    border-radius: 5px;
+}
+
+textarea::-webkit-scrollbar-thumb:hover {
+    background: #505050;
+}
+
+/* Modal styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background-color: #2d2d2d;
+    border: 1px solid #404040;
+    border-radius: 8px;
+    padding: clamp(1rem, 3vw, 1.5rem);
+    min-width: min(300px, 90vw);
+    max-width: min(500px, 90vw);
+    width: 100%;
+    margin: 1rem;
+}
+
+.modal-content h3 {
+    color: #ffffff;
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.modal-content input {
+    width: 100%;
+    padding: 0.75rem;
+    background-color: #1a1a1a;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    color: #e0e0e0;
+    font-size: 0.95rem;
+    font-family: inherit;
+    margin-bottom: 1rem;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.modal-content input:focus {
+    border-color: #606060;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+.modal-btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.modal-btn.cancel-btn {
+    background-color: #404040;
+    color: #e0e0e0;
+}
+
+.modal-btn.cancel-btn:hover {
+    background-color: #505050;
+}
+
+.modal-btn.add-btn {
+    background-color: #4a9eff;
+    color: #ffffff;
+}
+
+.modal-btn.add-btn:hover {
+    background-color: #5aaeff;
+}
+
+.modal-btn.delete-btn {
+    background-color: #d32f2f;
+    color: #ffffff;
+}
+
+.modal-btn.delete-btn:hover {
+    background-color: #e53935;
+}
+
+.modal-content p {
+    color: #e0e0e0;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+    word-wrap: break-word;
+}
+
+/* PLANNER INTERFACE */
+#planner-interface {
+    background: #232323;
+    border-left: 1px solid #404040;
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.planner-empty-message {
+    color: #707070;
+    font-size: 1.1rem;
+    text-align: center;
+    margin-top: 3rem;
+}
+
+.comp-items {
+    margin: 0.5rem 0 1rem 0;
+    color: #b0b0b0;
+    font-size: 0.98rem;
+    padding-left: 2px;
+}
+
+.comp-items strong {
+    color: #e0e0e0;
+    font-weight: 600;
+    margin-right: 0.5em;
+}
+
+.planner-controls {
+    margin: 1.5rem 0 1rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.planner-items-input {
+    padding: 0.5rem 0.75rem;
+    background-color: #1a1a1a;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    color: #e0e0e0;
+    font-size: 0.98rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-top: 0.25rem;
+    max-width: 300px;
+}
+
+.planner-items-input:focus {
+    border-color: #606060;
+}
+
+.planner-results {
+    margin-top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    max-height: 60vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 8px;
+}
+
+.planner-comp-result {
+    background: #232323;
+    border: 1px solid #404040;
+    border-radius: 6px;
+    padding: 1rem;
+}
+
+.planner-comp-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 0.25rem;
+}
+
+.planner-comp-items {
+    color: #b0b0b0;
+    font-size: 0.97rem;
+    margin-bottom: 0.5rem;
+}
+
+.planner-comp-notes {
+    color: #e0e0e0;
+    font-size: 0.97rem;
+    line-height: 1.5;
+}
+
+/* New styles for comp items input and save button */
+.comp-items-input {
+    padding: 0.3rem 0.6rem;
+    background-color: #1a1a1a;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    color: #e0e0e0;
+    font-size: 0.97rem;
+    font-family: inherit;
+    outline: none;
+    margin-left: 0.5em;
+    min-width: 120px;
+    max-width: 220px;
+}
+
+.comp-items-input:focus {
+    border-color: #606060;
+}
+
+.save-items-btn {
+    background: #4caf50;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 0.3rem 0.7rem;
+    margin-left: 0.5em;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.save-items-btn:hover {
+    background: #388e3c;
+}
+
+.items-saved-msg {
+    font-weight: 500;
+    vertical-align: middle;
+}
+
+/* Responsive breakpoints */
+@media (max-width: 600px) {
+    .sidebar {
+        width: 180px;
+        min-width: 150px;
+    }
+    
+    .tab-content-container {
+        padding: 0.75rem;
+    }
+    
+    .tab-header {
+        gap: 0.5rem;
+    }
+    
+    .tab-header h2 {
+        font-size: 1.1rem;
+    }
+}
+
+@media (max-width: 400px) {
+    .sidebar {
+        width: 150px;
+        min-width: 120px;
+    }
+    
+    .sidebar-header h2 {
+        font-size: 0.7rem;
+    }
+    
+    .nav-button {
+        padding: 0.5rem 0.5rem;
+        font-size: 0.8rem;
+    }
+    
+    .add-comp-btn {
+        padding: 0.5rem;
+        font-size: 0.75rem;
+    }
+}

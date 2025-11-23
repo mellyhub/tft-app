@@ -1,0 +1,17 @@
+{
+  "name": "set16",
+  "version": "1.0.0",
+  "description": "A simple Electron app for Set 16 notes",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": ["electron", "set16", "notes"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0"
+  }
+}
+
+
