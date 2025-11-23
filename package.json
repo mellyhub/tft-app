@@ -1,17 +1,39 @@
 {
-  "name": "set16",
+  "name": "set16-notes",
+  "productName": "Set 16 Notes",
   "version": "1.0.0",
-  "description": "A simple Electron app for Set 16 notes",
+  "description": "A simple Electron app for taking and planning Teamfight Tactics Set 16 notes.",
   "main": "main.js",
-  "scripts": {
-    "start": "electron ."
+  "build": {
+    "appId": "com.yourdomain.set16notes",
+    "productName": "Set 16 Notes",
+    "files": [
+      "main.js",
+      "renderer/**/*",
+      "data/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "assets"
+    },
+    "win": {
+      "target": "nsis"
+    }
   },
-  "keywords": ["electron", "set16", "notes"],
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "keywords": [
+    "electron",
+    "set16",
+    "notes"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^28.0.0"
+    "electron": "^28.0.0",
+    "electron-builder": "^24.0.0"
   }
 }
-
-

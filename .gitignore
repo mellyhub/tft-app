@@ -2,4 +2,7 @@ node_modules/
 .DS_Store
 *.log
 
+# Ignore build output
+/dist/
+
 

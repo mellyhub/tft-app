@@ -116,7 +116,7 @@ function createNavigation() {
     if (filteredComps.length === 0 && searchQuery) {
         const noResults = document.createElement('div');
         noResults.className = 'no-search-results';
-        noResults.textContent = 'Inga resultat hittades';
+        noResults.textContent = SYSTEM_MESSAGES[language].noResults;
         noResults.style.padding = '1rem';
         noResults.style.color = '#707070';
         noResults.style.textAlign = 'center';
@@ -137,6 +137,13 @@ function createNavigation() {
         }
         
         button.addEventListener('click', () => {
+            // Always show notes view and hide planner view when selecting a comp
+            const notesInterface = document.getElementById('notes-interface');
+            const plannerInterface = document.getElementById('planner-interface');
+            if (notesInterface && plannerInterface) {
+                notesInterface.style.display = '';
+                plannerInterface.style.display = 'none';
+            }
             switchToComp(comp);
         });
         
@@ -217,7 +224,7 @@ function switchToComp(comp) {
         <strong>Items:</strong>
         <input id="comp-items-input" class="comp-items-input" type="text" value="${itemsArr.join(', ')}" placeholder="Sword, Bow, Rod">
         <button id="save-items-btn" class="save-items-btn" title="Spara items">💾</button>
-        <span id="items-saved-msg" class="items-saved-msg" style="display:none; margin-left:8px; color:#4caf50; font-size:0.95em;">Sparat!</span>
+        <span id="items-saved-msg" class="items-saved-msg" style="display:none; margin-left:8px; color:#4caf50; font-size:0.95em;">${SYSTEM_MESSAGES[language].saved}</span>
     `;
     // Add save logic
     const itemsInput = document.getElementById('comp-items-input');
@@ -232,6 +239,7 @@ function switchToComp(comp) {
                 notesData[comp] = { notes: notesText, items: newItems };
             }
             saveNotes();
+            savedMsg.textContent = SYSTEM_MESSAGES[language].saved;
             savedMsg.style.display = 'inline';
             setTimeout(() => { savedMsg.style.display = 'none'; }, 1200);
         });
@@ -279,7 +287,7 @@ function addComp() {
     
     // Check if comp already exists
     if (trimmedName in notesData) {
-        alert('En komposition med det namnet finns redan.');
+        alert(SYSTEM_MESSAGES[language].addCompExists);
         input.focus();
         return;
     }
@@ -317,7 +325,7 @@ function addComp() {
 function showDeleteCompModal(comp) {
     const modal = document.getElementById('delete-comp-modal');
     const message = document.getElementById('delete-comp-message');
-    message.textContent = `Är du säker på att du vill ta bort "${capitalizeCompName(comp)}"?`;
+    message.textContent = SYSTEM_MESSAGES[language].deleteConfirm(comp);
     modal.setAttribute('data-comp-to-delete', comp);
     modal.classList.remove('hidden');
 }
@@ -345,7 +353,7 @@ function deleteComp() {
     
     // Don't allow deleting if it's the only comp
     if (compOrder.length <= 1) {
-        alert('Du kan inte ta bort den sista kompositionen.');
+        alert(SYSTEM_MESSAGES[language].deleteLastComp);
         hideDeleteCompModal();
         return;
     }
@@ -494,7 +502,7 @@ function setupPlannerInterface() {
     function updatePlannerResults() {
         const input = itemsInput.value.trim().toLowerCase();
         if (!input) {
-            resultsDiv.innerHTML = '<div class="planner-empty-message">Ange items för att se matchande kompositioner.</div>';
+            resultsDiv.innerHTML = `<div class="planner-empty-message">${SYSTEM_MESSAGES[language].enterItems}</div>`;
             return;
         }
         const selectedItems = input.split(',').map(s => s.trim()).filter(Boolean);
@@ -504,16 +512,28 @@ function setupPlannerInterface() {
             return selectedItems.every(item => data.items.map(i => i.toLowerCase()).includes(item));
         });
         if (matchingComps.length === 0) {
-            resultsDiv.innerHTML = '<div class="planner-empty-message">Inga kompositioner matchar dina items.</div>';
+            resultsDiv.innerHTML = `<div class="planner-empty-message">${SYSTEM_MESSAGES[language].noCompsMatch}</div>`;
             return;
         }
         resultsDiv.innerHTML = matchingComps.map(([comp, data]) =>
-            `<div class="planner-comp-result">
-                <div class="planner-comp-title">${capitalizeCompName(comp)}</div>
+            `<div class="planner-comp-result" data-comp="${comp}">
+                <div class="planner-comp-title" style="cursor:pointer; color:#4a9eff; text-decoration:underline;" data-comp="${comp}">${capitalizeCompName(comp)}</div>
                 <div class="planner-comp-items">Items: ${data.items.join(', ')}</div>
                 <div class="planner-comp-notes">${data.notes.replace(/\n/g, '<br>')}</div>
             </div>`
         ).join('');
+        // Add click event to each comp title to switch to that comp
+        resultsDiv.querySelectorAll('.planner-comp-title').forEach(el => {
+            el.addEventListener('click', (e) => {
+                const comp = e.target.getAttribute('data-comp');
+                if (comp) {
+                    // Switch to notes view and show the selected comp
+                    document.getElementById('planner-interface').style.display = 'none';
+                    document.getElementById('notes-interface').style.display = '';
+                    switchToComp(comp);
+                }
+            });
+        });
     }
 
     itemsInput.addEventListener('input', updatePlannerResults);
@@ -621,4 +641,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // Add language switcher
+    const langSwitcher = document.createElement('select');
+    langSwitcher.id = 'lang-switcher';
+    langSwitcher.style.marginLeft = 'auto';
+    langSwitcher.innerHTML = `
+        <option value="sv">Svenska</option>
+        <option value="en">English</option>
+    `;
+    langSwitcher.value = language;
+    langSwitcher.addEventListener('change', (e) => {
+        setLanguage(e.target.value);
+    });
+    const header = document.querySelector('header');
+    if (header) header.appendChild(langSwitcher);
 });
