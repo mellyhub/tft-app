@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { ipcRenderer } = require('electron');
+const { ipcRenderer, clipboard } = require('electron'); // added clipboard
 
 // Path to notes.json in /data directory (relative to project root)
 const NOTES_FILE = path.join(__dirname, '..', 'data', 'notes.json');
@@ -31,6 +31,37 @@ function getCompOrder() {
     return sorted;
 }
 
+// Format ISO date to locale string (safe)
+function formatDate(iso) {
+    if (!iso) return '';
+    try {
+        return new Date(iso).toLocaleString();
+    } catch {
+        return iso;
+    }
+}
+
+// Ensure a comp entry is an object with notes, items and lastEdited
+function normalizeNotesData() {
+    const keys = Object.keys(notesData);
+    keys.forEach(k => {
+        const val = notesData[k];
+        if (val && typeof val === 'object') {
+            // ensure notes and items exist
+            if (!('notes' in val)) val.notes = '';
+            if (!Array.isArray(val.items)) val.items = [];
+            if (!val.lastEdited) val.lastEdited = new Date().toISOString();
+        } else {
+            // convert legacy string format to object
+            notesData[k] = {
+                notes: typeof val === 'string' ? val : '',
+                items: [],
+                lastEdited: new Date().toISOString()
+            };
+        }
+    });
+}
+
 // Load notes from JSON file
 function loadNotes() {
     try {
@@ -43,6 +74,8 @@ function loadNotes() {
         if (fs.existsSync(NOTES_FILE)) {
             const data = fs.readFileSync(NOTES_FILE, 'utf8');
             notesData = JSON.parse(data);
+            if (!notesData || typeof notesData !== 'object') notesData = {};
+            normalizeNotesData();
         } else {
             notesData = {};
             fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
@@ -53,7 +86,7 @@ function loadNotes() {
     }
 }
 
-// Save notes to JSON file
+// Save notes to JSON file (also updates lastEdited for current comp)
 function saveNotes() {
     if (!currentComp) return;
     try {
@@ -64,11 +97,13 @@ function saveNotes() {
         // If the comp is an object, update notes and preserve items
         if (notesData[currentComp] && typeof notesData[currentComp] === 'object') {
             notesData[currentComp].notes = notesContent;
+            notesData[currentComp].lastEdited = new Date().toISOString();
         } else {
-            // If not, convert to new format with empty items
+            // If not, convert to new format with empty items and set lastEdited
             notesData[currentComp] = {
                 notes: notesContent,
-                items: []
+                items: [],
+                lastEdited: new Date().toISOString()
             };
         }
         // Ensure data directory exists before saving
@@ -77,6 +112,15 @@ function saveNotes() {
             fs.mkdirSync(dataDir, { recursive: true });
         }
         fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
+
+        // Update nav timestamps immediately
+        createNavigation();
+
+        // Update main meta display if present
+        const mainMeta = document.getElementById('current-comp-meta');
+        if (mainMeta) {
+            mainMeta.textContent = `Last edited: ${formatDate(notesData[currentComp].lastEdited)}`;
+        }
     } catch (error) {
         console.error('Error saving notes:', error);
     }
@@ -143,14 +187,20 @@ function createNavigation() {
     filteredComps.forEach(comp => {
         const button = document.createElement('button');
         button.className = 'nav-button';
-        button.textContent = capitalizeCompName(comp);
         button.setAttribute('data-comp', comp);
         
-        // Highlight search matches in button text
-        if (searchQuery) {
-            const highlighted = highlightSearchMatches(capitalizeCompName(comp), searchQuery);
-            button.innerHTML = highlighted;
-        }
+        // Determine lastEdited for this comp
+        const compData = notesData[comp] && typeof notesData[comp] === 'object' ? notesData[comp] : null;
+        const lastEdited = compData ? compData.lastEdited : null;
+        
+        // Title with optional highlighted search matches
+        const titleHtml = searchQuery 
+            ? highlightSearchMatches(capitalizeCompName(comp), searchQuery)
+            : capitalizeCompName(comp);
+        
+        // Build innerHTML with title and meta timestamp
+        const metaHtml = lastEdited ? `<div class="nav-meta">Senast ändrad: ${formatDate(lastEdited)}</div>` : '';
+        button.innerHTML = `<div class="nav-title">${titleHtml}</div>${metaHtml}`;
         
         button.addEventListener('click', () => {
             // Always show notes view and hide planner view when selecting a comp
@@ -209,12 +259,21 @@ function switchToComp(comp) {
     // Get notes and items for the comp (new structure)
     let notesText = '';
     let itemsArr = [];
+    let compObj = null;
     if (notesData[comp] && typeof notesData[comp] === 'object') {
-        notesText = notesData[comp].notes || '';
-        itemsArr = notesData[comp].items || [];
+        compObj = notesData[comp];
+        notesText = compObj.notes || '';
+        itemsArr = compObj.items || [];
     } else {
         notesText = notesData[comp] || '';
         itemsArr = [];
+    }
+    
+    // Update main meta display (if element exists)
+    const mainMeta = document.getElementById('current-comp-meta');
+    if (mainMeta) {
+        const lastEdited = compObj && compObj.lastEdited ? compObj.lastEdited : null;
+        mainMeta.textContent = lastEdited ? `Last edited: ${formatDate(lastEdited)}` : '';
     }
     
     console.log('Comp data:', { comp, notesText: notesText.substring(0, 50), itemsArr });
@@ -249,13 +308,25 @@ function switchToComp(comp) {
             const newItems = itemsInput.value.split(',').map(s => s.trim()).filter(Boolean);
             if (notesData[comp] && typeof notesData[comp] === 'object') {
                 notesData[comp].items = newItems;
+                notesData[comp].lastEdited = new Date().toISOString();
             } else {
-                notesData[comp] = { notes: notesText, items: newItems };
+                notesData[comp] = { notes: notesText, items: newItems, lastEdited: new Date().toISOString() };
             }
-            saveNotes();
-            savedMsg.textContent = SYSTEM_MESSAGES.saved;
-            savedMsg.style.display = 'inline';
-            setTimeout(() => { savedMsg.style.display = 'none'; }, 1200);
+            // Save file and update UI
+            try {
+                fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
+            } catch (error) {
+                console.error('Error saving items:', error);
+            }
+            createNavigation();
+            if (savedMsg) {
+                savedMsg.textContent = SYSTEM_MESSAGES.saved;
+                savedMsg.style.display = 'inline';
+                setTimeout(() => { savedMsg.style.display = 'none'; }, 1200);
+            }
+            // update main meta
+            const mainMeta2 = document.getElementById('current-comp-meta');
+            if (mainMeta2) mainMeta2.textContent = `Last edited: ${formatDate(notesData[comp].lastEdited)}`;
         });
         // Save on Enter
         itemsInput.addEventListener('keydown', (e) => {
@@ -320,8 +391,12 @@ function addComp() {
         saveNotes();
     }
     
-    // Add new comp with empty notes
-    notesData[trimmedName] = '';
+    // Add new comp with empty notes and timestamp
+    notesData[trimmedName] = {
+        notes: '',
+        items: [],
+        lastEdited: new Date().toISOString()
+    };
     
     // Save to file
     try {
@@ -618,13 +693,181 @@ function setupImagePaste() {
     });
 }
 
+// ===== Clipboard export/import (JSON with embedded base64 images) =====
+
+// Export comps (all or current) to clipboard as JSON including images
+async function exportCompsToClipboard(all = true) {
+    try {
+        const exportObj = { comps: {}, images: {} };
+        const comps = all ? notesData : (currentComp ? { [currentComp]: notesData[currentComp] } : {});
+        exportObj.comps = comps;
+
+        const imagesDir = path.join(__dirname, '..', 'data', 'images');
+        if (fs.existsSync(imagesDir) && fs.statSync(imagesDir).isDirectory()) {
+            const files = fs.readdirSync(imagesDir);
+            for (const f of files) {
+                try {
+                    const buf = fs.readFileSync(path.join(imagesDir, f));
+                    exportObj.images[f] = buf.toString('base64');
+                } catch (err) {
+                    console.warn('Failed to read image for clipboard export:', f, err);
+                }
+            }
+        }
+
+        clipboard.writeText(JSON.stringify(exportObj));
+        alert('Kompositioner kopierade till urklipp (inkl. bilder).');
+    } catch (error) {
+        console.error('Clipboard export failed', error);
+        alert('Export misslyckades: ' + (error && error.message ? error.message : String(error)));
+    }
+}
+
+// Import comps (and images) from clipboard JSON
+async function importCompsFromClipboard() {
+    try {
+        const txt = clipboard.readText();
+        if (!txt) {
+            alert('Urklipp tomt eller innehåller inte giltig data.');
+            return;
+        }
+
+        let obj;
+        try {
+            obj = JSON.parse(txt);
+        } catch (err) {
+            alert('Innehållet i urklipp är inte giltig JSON.');
+            return;
+        }
+
+        const comps = obj.comps || {};
+        const images = obj.images || {};
+
+        // Ensure images dir exists
+        const imagesDir = path.join(__dirname, '..', 'data', 'images');
+        if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
+
+        // Write images (handle collisions by renaming)
+        const writtenImages = {};
+        for (const [name, b64] of Object.entries(images)) {
+            try {
+                const buf = Buffer.from(b64, 'base64');
+                let outName = name;
+                let outPath = path.join(imagesDir, outName);
+                if (fs.existsSync(outPath)) {
+                    const ext = path.extname(name);
+                    const base = path.basename(name, ext);
+                    outName = `${base}-imported-${Date.now()}${ext}`;
+                    outPath = path.join(imagesDir, outName);
+                }
+                fs.writeFileSync(outPath, buf);
+                writtenImages[name] = outName;
+            } catch (err) {
+                console.warn('Failed to write imported image', name, err);
+            }
+        }
+
+        // Merge comps into notesData with collision-safe names
+        const importedNames = [];
+        Object.entries(comps).forEach(([name, data]) => {
+            let target = name;
+            if (target in notesData) {
+                const base = target;
+                let i = 1;
+                while ((`${base}-imported${i > 1 ? '-' + i : ''}`) in notesData) i++;
+                target = `${base}-imported${i > 1 ? '-' + i : ''}`;
+            }
+            // If comp references images by original filenames, user images were renamed; best-effort replace
+            if (data && typeof data === 'object' && data.notes && Object.keys(writtenImages).length) {
+                let notesHtml = data.notes;
+                Object.entries(writtenImages).forEach(([orig, newName]) => {
+                    // replace occurrences of original image path with new path
+                    notesHtml = notesHtml.split(`../data/images/${orig}`).join(`../data/images/${newName}`);
+                    notesHtml = notesHtml.split(`data/images/${orig}`).join(`../data/images/${newName}`);
+                    notesHtml = notesHtml.split(orig).join(newName);
+                });
+                data.notes = notesHtml;
+            }
+            // Ensure structure
+            if (!data || typeof data !== 'object') {
+                data = { notes: typeof data === 'string' ? data : '', items: [], lastEdited: new Date().toISOString() };
+            } else {
+                if (!('notes' in data)) data.notes = '';
+                if (!Array.isArray(data.items)) data.items = [];
+                if (!data.lastEdited) data.lastEdited = new Date().toISOString();
+            }
+            notesData[target] = data;
+            importedNames.push(target);
+        });
+
+        // Save to file
+        try {
+            const dataDir = path.dirname(NOTES_FILE);
+            if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+            fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
+        } catch (err) {
+            console.error('Failed to save notes after import', err);
+            alert('Fel vid sparande efter import: ' + (err && err.message ? err.message : String(err)));
+            return;
+        }
+
+        // Reload UI
+        loadNotes();
+        createNavigation();
+
+        alert('Import klart. Kompositioner importerade: ' + (importedNames.length ? importedNames.join(', ') : '0'));
+    } catch (error) {
+        console.error('Clipboard import failed', error);
+        alert('Import misslyckades: ' + (error && error.message ? error.message : String(error)));
+    }
+}
+
+// Small clipboard toolbar UI (copy/paste)
+function createClipboardToolbar() {
+    if (document.getElementById('clipboard-toolbar')) return;
+
+    const toolbar = document.createElement('div');
+    toolbar.id = 'clipboard-toolbar';
+    toolbar.style.position = 'fixed';
+    toolbar.style.left = '12px';
+    toolbar.style.bottom = '12px';
+    toolbar.style.zIndex = '9999';
+    toolbar.style.display = 'flex';
+    toolbar.style.gap = '8px';
+
+    const btnStyle = 'padding:6px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer;font-size:0.85rem;';
+
+    const copyAll = document.createElement('button');
+    copyAll.textContent = 'Kopiera alla (urklipp)';
+    copyAll.style.cssText = btnStyle;
+    copyAll.addEventListener('click', () => exportCompsToClipboard(true));
+
+    const copyCurrent = document.createElement('button');
+    copyCurrent.textContent = 'Kopiera aktuell (urklipp)';
+    copyCurrent.style.cssText = btnStyle;
+    copyCurrent.addEventListener('click', () => exportCompsToClipboard(false));
+
+    const pasteBtn = document.createElement('button');
+    pasteBtn.textContent = 'Klistra in från urklipp';
+    pasteBtn.style.cssText = btnStyle;
+    pasteBtn.addEventListener('click', () => importCompsFromClipboard());
+
+    toolbar.appendChild(copyAll);
+    toolbar.appendChild(copyCurrent);
+    toolbar.appendChild(pasteBtn);
+    document.body.appendChild(toolbar);
+}
+
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     loadNotes();
     createNavigation();
     setupAutoSave();
     setupImagePaste();
-    
+
+    // Create clipboard toolbar for export/import
+    createClipboardToolbar();
+
     // Setup add button (do it here to ensure DOM is ready)
     const addBtn = document.getElementById('add-comp-btn');
     if (addBtn) {
