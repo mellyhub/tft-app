@@ -10,6 +10,7 @@ let saveTimeout = null;
 let currentComp = null;
 let notesData = {};
 let searchQuery = '';
+let activeTagFilter = ''; // <-- new: currently selected tag filter
 
 // System messages (Swedish only)
 const SYSTEM_MESSAGES = {
@@ -50,12 +51,14 @@ function normalizeNotesData() {
             // ensure notes and items exist
             if (!('notes' in val)) val.notes = '';
             if (!Array.isArray(val.items)) val.items = [];
+            if (!Array.isArray(val.tags)) val.tags = []; // <-- new: ensure tags array
             if (!val.lastEdited) val.lastEdited = new Date().toISOString();
         } else {
             // convert legacy string format to object
             notesData[k] = {
                 notes: typeof val === 'string' ? val : '',
                 items: [],
+                tags: [], // <-- new: default tags
                 lastEdited: new Date().toISOString()
             };
         }
@@ -163,16 +166,114 @@ function highlightSearchMatches(text, query) {
     return text.replace(regex, '<mark class="search-highlight">$1</mark>');
 }
 
+// Get a sorted list of all tags present in notesData
+function getAllTags() {
+    const set = new Set();
+    Object.values(notesData).forEach(v => {
+        if (v && Array.isArray(v.tags)) {
+            v.tags.forEach(t => {
+                if (t && typeof t === 'string') set.add(t);
+            });
+        }
+    });
+    return Array.from(set).sort((a,b) => a.localeCompare(b));
+}
+
+// Toggle/set active tag filter
+function setTagFilter(tag) {
+    if (!tag) {
+        activeTagFilter = '';
+    } else if (activeTagFilter === tag) {
+        activeTagFilter = '';
+    } else {
+        activeTagFilter = tag;
+    }
+    // update navigation and tag UI
+    createNavigation();
+    const input = document.getElementById('tag-filter-input');
+    if (input) input.value = activeTagFilter || '';
+}
+
+// Create a simple tag filter UI above the navigation
+function createTagFilterUI() {
+    const nav = document.getElementById('comp-nav');
+    if (!nav) return;
+
+    // Container placed directly above nav; reuse if exists
+    let container = document.getElementById('tag-filter-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'tag-filter-container';
+        container.style.padding = '8px';
+        container.style.borderBottom = '1px solid #eee';
+        nav.parentNode.insertBefore(container, nav);
+    }
+
+    // Render input + tag chips
+    const tags = getAllTags();
+    container.innerHTML = `
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+            <input id="tag-filter-input" placeholder="Filter by tag" style="flex:1;padding:6px;border-radius:4px;border:1px solid #ccc;" value="${activeTagFilter || ''}">
+            <button id="tag-filter-clear" title="Clear filter" style="padding:6px;border-radius:4px;border:1px solid #ccc;background:#fff;">Rensa</button>
+        </div>
+        <div id="tag-list" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+    `;
+
+    const input = document.getElementById('tag-filter-input');
+    const clearBtn = document.getElementById('tag-filter-clear');
+    const tagList = document.getElementById('tag-list');
+
+    if (input) {
+        input.addEventListener('input', (e) => {
+            activeTagFilter = e.target.value.trim();
+            createNavigation();
+        });
+    }
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            activeTagFilter = '';
+            if (input) input.value = '';
+            createNavigation();
+        });
+    }
+
+    // Render chips
+    tagList.innerHTML = tags.map(t => {
+        const active = (t === activeTagFilter) ? 'background:#e6f4ff;border-color:#9ad1ff;' : '';
+        return `<button class="tag-chip" data-tag="${t}" style="padding:4px 8px;border-radius:12px;border:1px solid #ccc;${active};cursor:pointer;font-size:0.85rem">${t}</button>`;
+    }).join('');
+
+    tagList.querySelectorAll('.tag-chip').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const tag = btn.getAttribute('data-tag');
+            setTagFilter(tag);
+            createTagFilterUI();
+        });
+    });
+}
+
 // Create navigation buttons for all comps
 function createNavigation() {
     const nav = document.getElementById('comp-nav');
+    if (!nav) return;
     nav.innerHTML = '';
-    
+
+    // ensure tag UI is present above nav
+    createTagFilterUI();
+
     const compOrder = getCompOrder();
-    const filteredComps = searchQuery 
-        ? compOrder.filter(comp => compMatchesSearch(comp, searchQuery))
-        : compOrder;
-    
+    const filteredComps = compOrder.filter(comp => {
+        // filter by search query first
+        if (searchQuery && searchQuery.trim() !== '' && !compMatchesSearch(comp, searchQuery)) return false;
+        // then filter by active tag if any
+        if (activeTagFilter && activeTagFilter.trim() !== '') {
+            const compData = notesData[comp] && typeof notesData[comp] === 'object' ? notesData[comp] : null;
+            const tags = compData && Array.isArray(compData.tags) ? compData.tags.map(t => (t || '').toLowerCase()) : [];
+            if (!tags.includes(activeTagFilter.toLowerCase())) return false;
+        }
+        return true;
+    });
+
     if (filteredComps.length === 0 && searchQuery) {
         const noResults = document.createElement('div');
         noResults.className = 'no-search-results';
@@ -183,25 +284,29 @@ function createNavigation() {
         nav.appendChild(noResults);
         return;
     }
-    
+
     filteredComps.forEach(comp => {
         const button = document.createElement('button');
         button.className = 'nav-button';
         button.setAttribute('data-comp', comp);
-        
+
         // Determine lastEdited for this comp
         const compData = notesData[comp] && typeof notesData[comp] === 'object' ? notesData[comp] : null;
         const lastEdited = compData ? compData.lastEdited : null;
-        
+        const tags = compData && Array.isArray(compData.tags) ? compData.tags : [];
+
         // Title with optional highlighted search matches
-        const titleHtml = searchQuery 
+        const titleHtml = searchQuery
             ? highlightSearchMatches(capitalizeCompName(comp), searchQuery)
             : capitalizeCompName(comp);
-        
-        // Build innerHTML with title and meta timestamp
+
+        // Build tags html
+        const tagsHtml = tags.length ? `<div class="nav-tags">${tags.map(t => `<span class="nav-tag" data-tag="${t}" style="display:inline-block;padding:2px 6px;margin:4px 4px 0 0;border-radius:10px;background:#f1f1f1;border:1px solid #e0e0e0;cursor:pointer;font-size:0.75rem;">${t}</span>`).join('')}</div>` : '';
+
+        // Build innerHTML with title, tags and meta timestamp
         const metaHtml = lastEdited ? `<div class="nav-meta">Senast ändrad: ${formatDate(lastEdited)}</div>` : '';
-        button.innerHTML = `<div class="nav-title">${titleHtml}</div>${metaHtml}`;
-        
+        button.innerHTML = `<div class="nav-title">${titleHtml}</div>${tagsHtml}${metaHtml}`;
+
         button.addEventListener('click', () => {
             // Always show notes view and hide planner view when selecting a comp
             const notesInterface = document.getElementById('notes-interface');
@@ -212,8 +317,18 @@ function createNavigation() {
             }
             switchToComp(comp);
         });
-        
+
         nav.appendChild(button);
+    });
+
+    // tag click delegation: handle clicks on .nav-tag elements to toggle tag filter
+    nav.querySelectorAll('.nav-tag').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const tag = el.getAttribute('data-tag');
+            setTagFilter(tag);
+            createTagFilterUI();
+        });
     });
 }
 
@@ -391,10 +506,11 @@ function addComp() {
         saveNotes();
     }
     
-    // Add new comp with empty notes and timestamp
+    // Add new comp with empty notes, tags and timestamp
     notesData[trimmedName] = {
         notes: '',
         items: [],
+        tags: [], // <-- new: tags field
         lastEdited: new Date().toISOString()
     };
     

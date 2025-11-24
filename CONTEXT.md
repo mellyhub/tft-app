@@ -18,6 +18,11 @@ Lightweight desktop app for taking and organizing notes and planning composition
 - Image support: paste images into editor → saved to /data/images via IPC; editor stores image tags with relative paths.
 - Clipboard export/import: copy current or all comps to clipboard as a single JSON blob that embeds images as base64, and import from such JSON (writes images to /data/images, renames on collision, merges comps into notes.json).
 - Each comp includes a lastEdited ISO timestamp; timestamps shown in sidebar and main view and updated on changes.
+- Tag system (basic):
+  - Each comp may include a "tags" array (e.g. ["assassin","early"]).
+  - Tags are normalized on load and saved with comps.
+  - Sidebar shows tag chips for comps; clicking a tag toggles a tag-based filter.
+  - A tag filter input and tag chip list are available above the navigation to filter comps by tag.
 
 ## Data format (current)
 notes.json stores comps as a plain object keyed by comp name. Example:
@@ -26,11 +31,13 @@ notes.json stores comps as a plain object keyed by comp name. Example:
   "blade-ace": {
     "notes": "<p>Some HTML notes with images using ../data/images/img.png</p>",
     "items": ["Sword", "Bow"],
+    "tags": ["assassin", "carry"],
     "lastEdited": "2025-11-24T00:00:00.000Z"
   },
   "mage-lane": {
     "notes": "",
     "items": [],
+    "tags": [],
     "lastEdited": "2025-11-24T00:00:00.000Z"
   }
 }
@@ -43,16 +50,17 @@ set16/
 - /renderer
   - index.html
   - style.css
-  - renderer.js (UI logic, clipboard export/import, paste handling, lastEdited handling)
+  - renderer.js (UI logic, clipboard export/import, paste handling, lastEdited handling, basic tag support)
 - /data
   - notes.json (auto-created)
   - /images (saved pasted/imported images)
 
 ## Developer notes
-- Clipboard JSON export/import embeds images as base64; convenient for single copy/paste flows but can create large clipboard payloads.
-- Imported images are written to /data/images; names are collision-safe (renamed if needed) and notes HTML is updated best-effort to point to the new filenames.
-- The renderer expects a main process IPC handler 'save-image' to persist pasted images; ensure main.js implements this.
-- Restart the app after pulling changes so IPC handlers and renderer changes are active.
+- Tags are simple strings and are not validated — you'll label comps manually as you prefer.
+- Tag filter is case-insensitive when matching; tag chips preserve original casing.
+- Imported comps will keep any tags they include; new comps are created with an empty tags array by default.
+- The clipboard JSON export/import still includes images as base64; tags are included in exported comp objects.
+- Consider adding an explicit UI to edit tags per comp later (currently tags must be added by editing the comp's notes JSON or via a future UI).
 
 ## Running
 - npm install (if dependencies added)
