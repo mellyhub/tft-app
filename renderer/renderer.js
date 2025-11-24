@@ -1105,6 +1105,15 @@ function deleteComp(comp) {
     }
 }
 
+// Hide delete confirmation modal
+function hideDeleteCompModal() {
+    const modal = document.getElementById('delete-comp-modal');
+    if (!modal) return;
+    // clear stored target and hide
+    modal.removeAttribute('data-comp-to-delete');
+    modal.classList.add('hidden');
+}
+
 // Setup textarea auto-save
 function setupAutoSave() {
     const editorDiv = document.getElementById('comp-notes-editor');
@@ -1350,11 +1359,10 @@ function renderColorPicker(comp) {
     const titleEl = document.getElementById('current-comp-title');
     if (!titleEl) return;
 
-    // container for picker strip
     let picker = document.getElementById('comp-color-picker');
+    let clearBtn = document.getElementById('comp-color-clear');
     let strip = document.getElementById('comp-color-strip');
 
-    // create strip (thin bar above title) if missing
     if (!strip) {
         strip = document.createElement('div');
         strip.id = 'comp-color-strip';
@@ -1369,7 +1377,7 @@ function renderColorPicker(comp) {
     const derived = getCompColor(comp);
     strip.style.background = derived;
 
-    // create picker if missing
+    // create picker if missing, otherwise reuse existing
     if (!picker) {
         picker = document.createElement('input');
         picker.type = 'color';
@@ -1379,22 +1387,12 @@ function renderColorPicker(comp) {
         picker.style.verticalAlign = 'middle';
         picker.style.cursor = 'pointer';
 
-        // clear button
-        const clearBtn = document.createElement('button');
-        clearBtn.id = 'comp-color-clear';
-        clearBtn.title = 'Clear comp color override';
-        clearBtn.textContent = '✕';
-        clearBtn.style.marginLeft = '6px';
-        clearBtn.style.padding = '2px 6px';
-        clearBtn.style.border = '1px solid #ddd';
-        clearBtn.style.background = '#fff';
-        clearBtn.style.cursor = 'pointer';
-        clearBtn.style.borderRadius = '4px';
-        clearBtn.style.fontSize = '0.85rem';
-
-        // insert into header area near title
-        titleEl.insertAdjacentElement('afterend', picker);
-        titleEl.insertAdjacentElement('afterend', clearBtn);
+        // insert picker after title (place before clear button if it exists)
+        if (clearBtn && clearBtn.parentNode === titleEl.parentNode) {
+            titleEl.parentNode.insertBefore(picker, clearBtn);
+        } else {
+            titleEl.insertAdjacentElement('afterend', picker);
+        }
 
         picker.addEventListener('input', () => {
             try {
@@ -1409,6 +1407,22 @@ function renderColorPicker(comp) {
                 showToast('Fel vid sparande av färg.', 'error');
             }
         });
+    }
+
+    // create clear button if missing
+    if (!clearBtn) {
+        clearBtn = document.createElement('button');
+        clearBtn.id = 'comp-color-clear';
+        clearBtn.title = 'Clear comp color override';
+        clearBtn.textContent = '✕';
+        clearBtn.style.marginLeft = '6px';
+        clearBtn.style.padding = '2px 6px';
+        clearBtn.style.border = '1px solid #ddd';
+        clearBtn.style.background = '#fff';
+        clearBtn.style.cursor = 'pointer';
+        clearBtn.style.borderRadius = '4px';
+        clearBtn.style.fontSize = '0.85rem';
+        titleEl.insertAdjacentElement('afterend', clearBtn);
 
         clearBtn.addEventListener('click', () => {
             try {
