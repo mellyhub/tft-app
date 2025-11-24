@@ -1,6 +1,114 @@
 const fs = require('fs');
 const path = require('path');
-const { ipcRenderer, clipboard } = require('electron'); // added clipboard
+const { ipcRenderer, clipboard, shell } = require('electron'); // added shell
+
+// Path to notes.json in /data directory (relative to project root)
+const NOTES_FILE = path.join(__dirname, '..', 'data', 'notes.json');
+const SAVE_DELAY = 500; // milliseconds
+
+// ===== Logging / Error handling configuration =====
+const LOG_DIR = path.join(__dirname, '..', 'data', 'logs');
+const LOG_FILE = path.join(LOG_DIR, 'renderer.log');
+const LOG_MAX_BYTES = 200 * 1024; // 200KB simple rotation threshold
+
+function ensureLogDir() {
+    try {
+        if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
+    } catch (err) {
+        console.warn('Could not create log dir', err);
+    }
+}
+
+function writeLog(level, msg, meta) {
+    const time = new Date().toISOString();
+    const metaStr = meta ? (typeof meta === 'string' ? meta : JSON.stringify(meta)) : '';
+    const entry = `${time} [${level.toUpperCase()}] ${msg}${metaStr ? ' | ' + metaStr : ''}\n`;
+    try {
+        ensureLogDir();
+        fs.appendFileSync(LOG_FILE, entry, 'utf8');
+        // simple rotation
+        try {
+            const stats = fs.statSync(LOG_FILE);
+            if (stats.size > LOG_MAX_BYTES) {
+                const archive = LOG_FILE + '.' + Date.now();
+                fs.renameSync(LOG_FILE, archive);
+            }
+        } catch (_) {}
+    } catch (e) {
+        // fallback to console if file write fails
+        console[level === 'error' ? 'error' : (level === 'warn' ? 'warn' : 'log')](entry, e);
+    }
+    // mirror to console
+    console[level === 'error' ? 'error' : (level === 'warn' ? 'warn' : 'log')](entry);
+}
+
+function logDebug(msg, meta) { writeLog('debug', msg, meta); }
+function logInfo(msg, meta) { writeLog('info', msg, meta); }
+function logWarn(msg, meta) { writeLog('warn', msg, meta); }
+function logError(msg, meta) { writeLog('error', msg, meta); }
+
+// Global error handlers
+window.addEventListener('error', (ev) => {
+    try {
+        logError('Uncaught error', { message: ev.message, filename: ev.filename, lineno: ev.lineno, colno: ev.colno, stack: ev.error && ev.error.stack });
+    } catch (e) {
+        console.error('Error while logging uncaught error', e);
+    }
+});
+
+window.addEventListener('unhandledrejection', (ev) => {
+    try {
+        logError('Unhandled promise rejection', { reason: ev.reason && (ev.reason.stack || ev.reason) });
+    } catch (e) {
+        console.error('Error while logging unhandled rejection', e);
+    }
+});
+
+// Small user toast for non-blocking notifications
+function showToast(text, type = 'info') {
+    try {
+        let t = document.getElementById('app-toast');
+        if (!t) {
+            t = document.createElement('div');
+            t.id = 'app-toast';
+            t.style.position = 'fixed';
+            t.style.right = '12px';
+            t.style.top = '12px';
+            t.style.zIndex = '10000';
+            t.style.minWidth = '200px';
+            t.style.padding = '8px 12px';
+            t.style.borderRadius = '6px';
+            t.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
+            t.style.fontSize = '0.9rem';
+            t.style.transition = 'opacity 0.3s ease';
+            document.body.appendChild(t);
+        }
+        t.textContent = text;
+        t.style.background = type === 'error' ? '#ffdddd' : (type === 'warn' ? '#fff8e1' : '#e6ffed');
+        t.style.border = type === 'error' ? '1px solid #f44336' : (type === 'warn' ? '1px solid #ffb74d' : '1px solid #8bc34a');
+        t.style.color = '#222';
+        t.style.opacity = '1';
+        // hide after 4s
+        setTimeout(() => { if (t) t.style.opacity = '0'; }, 4000);
+    } catch (e) {
+        logWarn('showToast failed', e);
+    }
+}
+
+// Helper wrapper for IPC with logging
+async function safeInvoke(channel, ...args) {
+    try {
+        logDebug(`ipc invoke ${channel}`, args);
+        const res = await ipcRenderer.invoke(channel, ...args);
+        logDebug(`ipc response ${channel}`, res);
+        return res;
+    } catch (err) {
+        logError(`IPC ${channel} failed`, err && (err.stack || err.message || err));
+        showToast('Ett fel uppstod internt. Se loggfil.', 'error');
+        throw err;
+    }
+}
+
 
 // Path to notes.json in /data directory (relative to project root)
 const NOTES_FILE = path.join(__dirname, '..', 'data', 'notes.json');
@@ -626,7 +734,7 @@ function addComp() {
 async function showDeleteCompModal(comp) {
     // Try native confirmation dialog first
     try {
-        const confirmed = await ipcRenderer.invoke('confirm-delete', comp);
+        const confirmed = await safeInvoke('confirm-delete', comp);
         if (confirmed) {
             // Proceed to delete
             deleteComp(comp);
@@ -634,7 +742,7 @@ async function showDeleteCompModal(comp) {
             // User cancelled - do nothing
         }
     } catch (err) {
-        console.warn('Native confirm failed, falling back to modal:', err);
+        logWarn('Native confirm failed, falling back to modal', err);
         // Fallback: show existing in-app modal UI
         const modal = document.getElementById('delete-comp-modal');
         const message = document.getElementById('delete-comp-message');
@@ -858,44 +966,47 @@ function setupImagePaste() {
 
     editorDiv.addEventListener('paste', async (e) => {
         e.preventDefault();
-        
+
         const items = e.clipboardData.items;
         let imageFound = false;
-        
+
         for (let i = 0; i < items.length; i++) {
             if (items[i].type.indexOf('image') !== -1) {
                 imageFound = true;
                 const blob = items[i].getAsFile();
                 const reader = new FileReader();
-                
+
                 reader.onload = async (event) => {
                     const base64data = event.target.result.split(',')[1];
                     const timestamp = Date.now();
                     const filename = `image-${timestamp}.png`;
-                    
+
                     try {
-                        const result = await ipcRenderer.invoke('save-image', base64data, filename);
-                        if (result.success) {
+                        const result = await safeInvoke('save-image', base64data, filename);
+                        if (result && result.success) {
                             // Insert image tag into editor
                             const imgPath = `../data/images/${filename}`;
                             const imgTag = `<img src="${imgPath}" alt="pasted-image" style="max-width:100%; border-radius:4px; margin:0.5rem 0;">`;
-                            
+
                             // Insert at cursor position using execCommand
                             document.execCommand('insertHTML', false, imgTag);
-                            
+
                             // Auto-save after inserting image
                             debouncedSave();
+                        } else {
+                            logWarn('save-image responded with failure', result);
+                            alert('Could not save image.');
                         }
                     } catch (error) {
-                        console.error('Error saving image:', error);
-                        alert('Failed to save image: ' + error.message);
+                        logError('Error saving image via IPC', error);
+                        alert('Failed to save image: ' + (error && error.message ? error.message : String(error)));
                     }
                 };
-                
+
                 reader.readAsDataURL(blob);
             }
         }
-        
+
         // If no image, handle normal paste
         if (!imageFound) {
             const text = e.clipboardData.getData('text/plain');
@@ -1069,6 +1180,49 @@ function createClipboardToolbar() {
     document.body.appendChild(toolbar);
 }
 
+// Add a small log-folder button in the UI (near clipboard toolbar)
+function createLogButtonUI() {
+    if (document.getElementById('open-log-btn')) return;
+
+    const btn = document.createElement('button');
+    btn.id = 'open-log-btn';
+    btn.title = 'Open logs folder';
+    btn.style.position = 'fixed';
+    btn.style.left = '12px';
+    btn.style.bottom = '68px'; // above clipboard toolbar
+    btn.style.zIndex = '10000';
+    btn.style.padding = '6px 8px';
+    btn.style.borderRadius = '6px';
+    btn.style.border = '1px solid #ccc';
+    btn.style.background = '#fff';
+    btn.style.cursor = 'pointer';
+    btn.style.fontSize = '0.85rem';
+    btn.textContent = 'Logs';
+
+    btn.addEventListener('click', async () => {
+        try {
+            ensureLogDir();
+            // Try to open directly using shell
+            const opened = await shell.openPath(LOG_DIR);
+            // shell.openPath returns '' on success, otherwise error string
+            if (opened && opened.length) {
+                // fallback: ask main process (if available)
+                try {
+                    await safeInvoke('open-log-folder', LOG_DIR);
+                } catch (e) {
+                    logWarn('open-log-folder ipc failed', e);
+                    showToast('Kunde inte öppna loggmappen automatiskt. Se loggfil i data/logs.', 'warn');
+                }
+            }
+        } catch (err) {
+            logError('Failed to open log folder', err);
+            showToast('Kunde inte öppna loggmappen. Se loggfil.', 'error');
+        }
+    });
+
+    document.body.appendChild(btn);
+}
+
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     loadNotes();
@@ -1078,6 +1232,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Create clipboard toolbar for export/import
     createClipboardToolbar();
+
+    // Create log button UI
+    setTimeout(createLogButtonUI, 50);
 
     // Setup add button (do it here to ensure DOM is ready)
     const addBtn = document.getElementById('add-comp-btn');
