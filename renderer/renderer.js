@@ -891,6 +891,8 @@ function switchToComp(comp) {
     if (headerDeleteBtn) {
         headerDeleteBtn.style.display = 'flex';
     }
+
+    renderTagEditor(comp);
 }
 
 // Show add composition modal
@@ -1056,6 +1058,174 @@ function setupAutoSave() {
     const editorDiv = document.getElementById('comp-notes-editor');
     if (editorDiv) {
         editorDiv.addEventListener('input', debouncedSave);
+    }
+}
+
+// --- Tag editor helpers (insert after normalizeNotesData or near other helpers) ---
+function renderTagEditor(comp) {
+    if (!comp) return;
+    let tagsContainer = document.getElementById('comp-tags');
+    // create container if missing, place it below itemsDiv
+    if (!tagsContainer) {
+        tagsContainer = document.createElement('div');
+        tagsContainer.id = 'comp-tags';
+        tagsContainer.className = 'comp-tags';
+        const tabContent = document.getElementById('tab-content');
+        const itemsDiv = document.getElementById('comp-items');
+        if (itemsDiv && itemsDiv.parentNode) {
+            itemsDiv.parentNode.insertBefore(tagsContainer, itemsDiv.nextSibling);
+        } else if (tabContent) {
+            tabContent.appendChild(tagsContainer);
+        }
+    }
+
+    const compData = notesData[comp] && typeof notesData[comp] === 'object' ? notesData[comp] : { tags: [] };
+    const tags = Array.isArray(compData.tags) ? compData.tags : [];
+
+    tagsContainer.innerHTML = `
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+            <strong>Tags:</strong>
+            <div id="tag-chip-list" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+            <input id="tag-input" placeholder="Add tag and press Enter" style="margin-left:8px;padding:4px;border-radius:4px;border:1px solid #ccc;" />
+        </div>
+    `;
+
+    const chipList = document.getElementById('tag-chip-list');
+    const input = document.getElementById('tag-input');
+
+    // render chips
+    chipList.innerHTML = tags.map(t => {
+        const safe = escapeHtml(t);
+        return `<span class="tag-chip-edit" data-tag="${safe}" style="display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:12px;border:1px solid #ccc;background:#fafafa;"><span>${safe}</span><button class="tag-remove-btn" data-tag="${safe}" title="Remove" style="border:none;background:transparent;cursor:pointer;font-weight:700;line-height:1;">×</button></span>`;
+    }).join('');
+
+    // bind remove buttons
+    chipList.querySelectorAll('.tag-remove-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const tag = btn.getAttribute('data-tag');
+            removeTagFromComp(comp, tag);
+        });
+    });
+
+    // autocomplete simple suggestion dropdown
+    let suggestions = [];
+    const suggestBoxId = 'tag-suggest-box';
+    function updateSuggestBox() {
+        let box = document.getElementById(suggestBoxId);
+        if (!box) {
+            box = document.createElement('div');
+            box.id = suggestBoxId;
+            box.style.position = 'absolute';
+            box.style.background = '#fff';
+            box.style.border = '1px solid #ccc';
+            box.style.padding = '6px';
+            box.style.borderRadius = '4px';
+            box.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)';
+            box.style.zIndex = 10000;
+            document.body.appendChild(box);
+        }
+        if (!suggestions.length) {
+            box.style.display = 'none';
+            return;
+        }
+        box.style.display = '';
+        box.innerHTML = suggestions.map(s => `<div class="tag-suggest-item" data-val="${escapeHtml(s)}" style="padding:4px 8px;cursor:pointer;">${escapeHtml(s)}</div>`).join('');
+        // position under input
+        const rect = input.getBoundingClientRect();
+        box.style.left = `${rect.left}px`;
+        box.style.top = `${rect.bottom + 6}px`;
+        box.style.minWidth = `${rect.width}px`;
+
+        box.querySelectorAll('.tag-suggest-item').forEach(it => {
+            it.addEventListener('click', (ev) => {
+                const val = it.getAttribute('data-val');
+                addTagToComp(comp, val);
+                input.value = '';
+                suggestions = [];
+                updateSuggestBox();
+            });
+        });
+    }
+
+    input.addEventListener('input', (e) => {
+        const v = e.target.value.trim();
+        if (!v) {
+            suggestions = [];
+            updateSuggestBox();
+            return;
+        }
+        const all = getAllTags().filter(t => t.toLowerCase().includes(v.toLowerCase()) && !tags.map(x => x.toLowerCase()).includes(t.toLowerCase()));
+        suggestions = all.slice(0, 8);
+        updateSuggestBox();
+    });
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            const val = input.value.trim();
+            if (val) {
+                addTagToComp(comp, val);
+                input.value = '';
+                suggestions = [];
+                updateSuggestBox();
+            }
+        } else if (e.key === 'Escape') {
+            input.value = '';
+            suggestions = [];
+            updateSuggestBox();
+        }
+    });
+
+    // hide suggest box on blur (small delay to allow click)
+    input.addEventListener('blur', () => {
+        setTimeout(() => {
+            const box = document.getElementById(suggestBoxId);
+            if (box) box.style.display = 'none';
+        }, 150);
+    });
+}
+
+function addTagToComp(comp, tag) {
+    if (!comp || !tag) return;
+    const clean = tag.toString().trim();
+    if (!clean) return;
+    if (!notesData[comp] || typeof notesData[comp] !== 'object') notesData[comp] = { notes: '', items: [], tags: [], lastEdited: new Date().toISOString() };
+    if (!Array.isArray(notesData[comp].tags)) notesData[comp].tags = [];
+    // avoid duplicates (case-insensitive)
+    const exists = notesData[comp].tags.some(t => t.toLowerCase() === clean.toLowerCase());
+    if (exists) {
+        showToast('Tag already present', 'warn');
+        return;
+    }
+    notesData[comp].tags.push(clean);
+    notesData[comp].lastEdited = new Date().toISOString();
+    try {
+        fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
+        logInfo(`Added tag "${clean}" to ${comp}`);
+        createNavigation();
+        renderTagEditor(comp);
+    } catch (err) {
+        logError('Error saving tag addition', err);
+        showToast('Fel vid sparande av tag.', 'error');
+    }
+}
+
+function removeTagFromComp(comp, tag) {
+    if (!comp || !tag) return;
+    if (!notesData[comp] || !Array.isArray(notesData[comp].tags)) return;
+    const before = notesData[comp].tags.length;
+    notesData[comp].tags = notesData[comp].tags.filter(t => t.toLowerCase() !== tag.toLowerCase());
+    if (notesData[comp].tags.length === before) return;
+    notesData[comp].lastEdited = new Date().toISOString();
+    try {
+        fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
+        logInfo(`Removed tag "${tag}" from ${comp}`);
+        createNavigation();
+        renderTagEditor(comp);
+    } catch (err) {
+        logError('Error saving tag removal', err);
+        showToast('Fel vid borttagning av tag.', 'error');
     }
 }
 
