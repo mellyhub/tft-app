@@ -1,10 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const { ipcRenderer, clipboard, shell } = require('electron'); // added shell
+const { ipcRenderer, clipboard, shell } = require('electron');
 
-// Path to notes.json in /data directory (relative to project root)
-const NOTES_FILE = path.join(__dirname, '..', 'data', 'notes.json');
-const SAVE_DELAY = 500; // milliseconds
 
 // ===== Logging / Error handling configuration =====
 const LOG_DIR = path.join(__dirname, '..', 'data', 'logs');
@@ -118,7 +115,7 @@ let saveTimeout = null;
 let currentComp = null;
 let notesData = {};
 let searchQuery = '';
-let activeTagFilter = ''; // <-- new: currently selected tag filter
+let activeTagFilter = '';
 
 // System messages (Swedish only)
 const SYSTEM_MESSAGES = {
@@ -134,9 +131,7 @@ const SYSTEM_MESSAGES = {
 // Get comp order from notesData keys, sorted alphabetically
 function getCompOrder() {
     const comps = Object.keys(notesData);
-    const sorted = comps.sort((a, b) => {
-        return a.localeCompare(b);
-    });
+    const sorted = comps.sort((a, b) => a.localeCompare(b));
     return sorted;
 }
 
@@ -156,17 +151,15 @@ function normalizeNotesData() {
     keys.forEach(k => {
         const val = notesData[k];
         if (val && typeof val === 'object') {
-            // ensure notes and items exist
             if (!('notes' in val)) val.notes = '';
             if (!Array.isArray(val.items)) val.items = [];
-            if (!Array.isArray(val.tags)) val.tags = []; // <-- new: ensure tags array
+            if (!Array.isArray(val.tags)) val.tags = [];
             if (!val.lastEdited) val.lastEdited = new Date().toISOString();
         } else {
-            // convert legacy string format to object
             notesData[k] = {
                 notes: typeof val === 'string' ? val : '',
                 items: [],
-                tags: [], // <-- new: default tags
+                tags: [],
                 lastEdited: new Date().toISOString()
             };
         }
@@ -176,7 +169,6 @@ function normalizeNotesData() {
 // Load notes from JSON file
 function loadNotes() {
     try {
-        // Ensure data directory exists
         const dataDir = path.dirname(NOTES_FILE);
         if (!fs.existsSync(dataDir)) {
             fs.mkdirSync(dataDir, { recursive: true });
@@ -192,7 +184,7 @@ function loadNotes() {
             fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
         }
     } catch (error) {
-        console.error('Error loading notes:', error);
+        logError('Error loading notes:', error);
         notesData = {};
     }
 }
@@ -201,39 +193,34 @@ function loadNotes() {
 function saveNotes() {
     if (!currentComp) return;
     try {
-        // Get content from contenteditable div instead of textarea
         const editorDiv = document.getElementById('comp-notes-editor');
         const notesContent = editorDiv ? editorDiv.innerHTML : '';
         
-        // If the comp is an object, update notes and preserve items
         if (notesData[currentComp] && typeof notesData[currentComp] === 'object') {
             notesData[currentComp].notes = notesContent;
             notesData[currentComp].lastEdited = new Date().toISOString();
         } else {
-            // If not, convert to new format with empty items and set lastEdited
             notesData[currentComp] = {
                 notes: notesContent,
                 items: [],
                 lastEdited: new Date().toISOString()
             };
         }
-        // Ensure data directory exists before saving
+
         const dataDir = path.dirname(NOTES_FILE);
         if (!fs.existsSync(dataDir)) {
             fs.mkdirSync(dataDir, { recursive: true });
         }
         fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
 
-        // Update nav timestamps immediately
         createNavigation();
 
-        // Update main meta display if present
         const mainMeta = document.getElementById('current-comp-meta');
         if (mainMeta) {
             mainMeta.textContent = `Last edited: ${formatDate(notesData[currentComp].lastEdited)}`;
         }
     } catch (error) {
-        console.error('Error saving notes:', error);
+        logError('Error saving notes:', error);
     }
 }
 
@@ -258,7 +245,6 @@ function capitalizeCompName(comp) {
 // Strip HTML tags for searching plain text inside saved notes
 function stripHtml(html) {
     if (!html || typeof html !== 'string') return '';
-    // remove tags
     return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
@@ -284,7 +270,6 @@ function compMatchesSearch(comp, query) {
     const items = compData && Array.isArray(compData.items) ? compData.items.map(i => (i || '').toLowerCase()) : [];
     const tags = compData && Array.isArray(compData.tags) ? compData.tags.map(t => (t || '').toLowerCase()) : [];
 
-    // All tokens must match at least one field (title OR notes OR items OR tags)
     return tokens.every(token => {
         if (compName.includes(token)) return true;
         if (notesText.includes(token)) return true;
@@ -300,11 +285,9 @@ function highlightSearchMatches(text, query) {
     const tokens = getSearchTokens(query);
     if (tokens.length === 0) return escapeHtml(text);
 
-    // Escape tokens for regex and build alternation
     const escaped = tokens.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     const re = new RegExp(`(${escaped.join('|')})`, 'gi');
 
-    // Escape incoming text then replace matches
     return escapeHtml(text).replace(re, '<mark class="search-highlight">$1</mark>');
 }
 
@@ -323,23 +306,17 @@ function setupSearch() {
     const searchInput = document.getElementById('search-input');
     if (!searchInput) return;
 
-    // Live-search on input (no heavy debounce required; createNavigation is lightweight)
     searchInput.addEventListener('input', (e) => {
         searchQuery = e.target.value || '';
         createNavigation();
-        // If currently viewing a comp, keep its editor content unchanged (avoid reloading unless switching)
     });
 
-    // Keyboard shortcuts for search input:
-    // Enter -> switch to first matching comp (if any)
-    // Escape -> clear search
     searchInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             const compOrder = getCompOrder();
             const first = compOrder.find(c => compMatchesSearch(c, searchQuery));
             if (first) {
-                // switch to notes view
                 const notesInterface = document.getElementById('notes-interface');
                 const plannerInterface = document.getElementById('planner-interface');
                 if (notesInterface && plannerInterface) {
@@ -347,540 +324,6 @@ function setupSearch() {
                     plannerInterface.style.display = 'none';
                 }
                 switchToComp(first);
-                // focus editor
-                const editorDiv = document.getElementById('comp-notes-editor');
-                if (editorDiv) editorDiv.focus();
-            }
-        } else if (e.key === 'Escape') {
-            if (searchQuery && searchQuery.length > 0) {
-                searchQuery = '';
-                searchInput.value = '';
-                createNavigation();
-            }
-        }
-    });
-}
-
-// Get a sorted list of all tags present in notesData
-function getAllTags() {
-    const set = new Set();
-    Object.values(notesData).forEach(v => {
-        if (v && Array.isArray(v.tags)) {
-            v.tags.forEach(t => {
-                if (t && typeof t === 'string') set.add(t);
-            });
-        }
-    });
-    return Array.from(set).sort((a,b) => a.localeCompare(b));
-}
-
-// Toggle/set active tag filter
-function setTagFilter(tag) {
-    if (!tag) {
-        activeTagFilter = '';
-    } else if (activeTagFilter === tag) {
-        activeTagFilter = '';
-    } else {
-        activeTagFilter = tag;
-    }
-    // update navigation and tag UI
-    createNavigation();
-    const input = document.getElementById('tag-filter-input');
-    if (input) input.value = activeTagFilter || '';
-}
-
-// Create a simple tag filter UI above the navigation
-function createTagFilterUI() {
-    const nav = document.getElementById('comp-nav');
-    if (!nav) return;
-
-    // Container placed directly above nav; reuse if exists
-    let container = document.getElementById('tag-filter-container');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'tag-filter-container';
-        container.style.padding = '8px';
-        container.style.borderBottom = '1px solid #eee';
-        nav.parentNode.insertBefore(container, nav);
-    }
-
-    // Render input + tag chips
-    const tags = getAllTags();
-    container.innerHTML = `
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-            <input id="tag-filter-input" placeholder="Filter by tag" style="flex:1;padding:6px;border-radius:4px;border:1px solid #ccc;" value="${activeTagFilter || ''}">
-            <button id="tag-filter-clear" title="Clear filter" style="padding:6px;border-radius:4px;border:1px solid #ccc;background:#fff;">Rensa</button>
-        </div>
-        <div id="tag-list" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
-    `;
-
-    const input = document.getElementById('tag-filter-input');
-    const clearBtn = document.getElementById('tag-filter-clear');
-    const tagList = document.getElementById('tag-list');
-
-    if (input) {
-        input.addEventListener('input', (e) => {
-            activeTagFilter = e.target.value.trim();
-            createNavigation();
-        });
-    }
-    if (clearBtn) {
-        clearBtn.addEventListener('click', () => {
-            activeTagFilter = '';
-            if (input) input.value = '';
-            createNavigation();
-        });
-    }
-
-    // Render chips
-    tagList.innerHTML = tags.map(t => {
-        const active = (t === activeTagFilter) ? 'background:#e6f4ff;border-color:#9ad1ff;' : '';
-        return `<button class="tag-chip" data-tag="${t}" style="padding:4px 8px;border-radius:12px;border:1px solid #ccc;${active};cursor:pointer;font-size:0.85rem">${t}</button>`;
-    }).join('');
-
-    tagList.querySelectorAll('.tag-chip').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const tag = btn.getAttribute('data-tag');
-            setTagFilter(tag);
-            createTagFilterUI();
-        });
-    });
-}
-
-// Create navigation buttons for all comps
-function createNavigation() {
-    const nav = document.getElementById('comp-nav');
-    if (!nav) return;
-    nav.innerHTML = '';
-
-    // ensure tag UI is present above nav
-    createTagFilterUI();
-
-    const compOrder = getCompOrder();
-    const filteredComps = compOrder.filter(comp => {
-        // filter by search query first
-        if (searchQuery && searchQuery.trim() !== '' && !compMatchesSearch(comp, searchQuery)) return false;
-        // then filter by active tag if any
-        if (activeTagFilter && activeTagFilter.trim() !== '') {
-            const compData = notesData[comp] && typeof notesData[comp] === 'object' ? notesData[comp] : null;
-            const tags = compData && Array.isArray(compData.tags) ? compData.tags.map(t => (t || '').toLowerCase()) : [];
-            if (!tags.includes(activeTagFilter.toLowerCase())) return false;
-        }
-        return true;
-    });
-
-    if (filteredComps.length === 0 && searchQuery) {
-        const noResults = document.createElement('div');
-        noResults.className = 'no-search-results';
-        noResults.textContent = SYSTEM_MESSAGES.noResults;
-        noResults.style.padding = '1rem';
-        noResults.style.color = '#707070';
-        noResults.style.textAlign = 'center';
-        nav.appendChild(noResults);
-        return;
-    }
-
-    filteredComps.forEach(comp => {
-        const button = document.createElement('button');
-        button.className = 'nav-button';
-        button.setAttribute('data-comp', comp);
-
-        // Determine lastEdited for this comp
-        const compData = notesData[comp] && typeof notesData[comp] === 'object' ? notesData[comp] : null;
-        const lastEdited = compData ? compData.lastEdited : null;
-        const tags = compData && Array.isArray(compData.tags) ? compData.tags : [];
-
-        // Title with optional highlighted search matches
-        const titleHtml = searchQuery
-            ? highlightSearchMatches(capitalizeCompName(comp), searchQuery)
-            : capitalizeCompName(comp);
-
-        // Build tags html
-        const tagsHtml = tags.length ? `<div class="nav-tags">${tags.map(t => `<span class="nav-tag" data-tag="${t}" style="display:inline-block;padding:2px 6px;margin:4px 4px 0 0;border-radius:10px;background:#f1f1f1;border:1px solid #e0e0e0;cursor:pointer;font-size:0.75rem;">${t}</span>`).join('')}</div>` : '';
-
-        // Build innerHTML with title, tags and meta timestamp
-        const metaHtml = lastEdited ? `<div class="nav-meta">Senast ändrad: ${formatDate(lastEdited)}</div>` : '';
-        button.innerHTML = `<div class="nav-title">${titleHtml}</div>${tagsHtml}${metaHtml}`;
-
-        button.addEventListener('click', () => {
-            // Always show notes view and hide planner view when selecting a comp
-            const notesInterface = document.getElementById('notes-interface');
-            const plannerInterface = document.getElementById('planner-interface');
-            if (notesInterface && plannerInterface) {
-                notesInterface.style.display = '';
-                plannerInterface.style.display = 'none';
-            }
-            switchToComp(comp);
-        });
-
-        nav.appendChild(button);
-    });
-
-    // tag click delegation: handle clicks on .nav-tag elements to toggle tag filter
-    nav.querySelectorAll('.nav-tag').forEach(el => {
-        el.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const tag = el.getAttribute('data-tag');
-            setTagFilter(tag);
-            createTagFilterUI();
-        });
-    });
-}
-
-// Switch to a specific comp
-function switchToComp(comp) {
-    console.log('Switching to comp:', comp);
-    // Update active button
-    document.querySelectorAll('.nav-button').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.getAttribute('data-comp') === comp) {
-            btn.classList.add('active');
-        }
-    });
-    
-    // Update delete button to work with current comp
-    const deleteBtn = document.getElementById('delete-current-comp-btn');
-    if (deleteBtn) {
-        // Remove old event listeners by cloning
-        const newDeleteBtn = deleteBtn.cloneNode(true);
-        deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
-        newDeleteBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            showDeleteCompModal(comp);
-        });
-    }
-    
-    // Save current comp before switching
-    if (currentComp) {
-        saveNotes();
-    }
-    
-    // Update current comp
-    currentComp = comp;
-    
-    // Show tab content and hide no-selection message
-    document.getElementById('no-selection').classList.add('hidden');
-    document.getElementById('tab-content').classList.remove('hidden');
-    
-    // Update title
-    document.getElementById('current-comp-title').textContent = capitalizeCompName(comp);
-    
-    // Get notes and items for the comp (new structure)
-    let notesText = '';
-    let itemsArr = [];
-    let compObj = null;
-    if (notesData[comp] && typeof notesData[comp] === 'object') {
-        compObj = notesData[comp];
-        notesText = compObj.notes || '';
-        itemsArr = compObj.items || [];
-    } else {
-        notesText = notesData[comp] || '';
-        itemsArr = [];
-    }
-    
-    // Update main meta display (if element exists)
-    const mainMeta = document.getElementById('current-comp-meta');
-    if (mainMeta) {
-        const lastEdited = compObj && compObj.lastEdited ? compObj.lastEdited : null;
-        mainMeta.textContent = lastEdited ? `Last edited: ${formatDate(lastEdited)}` : '';
-    }
-    
-    console.log('Comp data:', { comp, notesText: notesText.substring(0, 50), itemsArr });
-
-    // Get or create items div
-    let itemsDiv = document.getElementById('comp-items');
-    if (!itemsDiv) {
-        itemsDiv = document.createElement('div');
-        itemsDiv.id = 'comp-items';
-        itemsDiv.className = 'comp-items';
-        const tabContent = document.getElementById('tab-content');
-        const tabHeader = tabContent.querySelector('.tab-header');
-        if (tabHeader) {
-            tabHeader.insertAdjacentElement('afterend', itemsDiv);
-        }
-    }
-    
-    // Update items div content
-    itemsDiv.innerHTML = `
-        <strong>Items:</strong>
-        <input id="comp-items-input" class="comp-items-input" type="text" value="${itemsArr.join(', ')}" placeholder="Sword, Bow, Rod">
-        <button id="save-items-btn" class="save-items-btn" title="Spara items">💾</button>
-        <span id="items-saved-msg" class="items-saved-msg" style="display:none; margin-left:8px; color:#4caf50; font-size:0.95em;">${SYSTEM_MESSAGES.saved}</span>
-    `;
-    
-    // Add save logic for items
-    const itemsInput = document.getElementById('comp-items-input');
-    const saveBtn = document.getElementById('save-items-btn');
-    const savedMsg = document.getElementById('items-saved-msg');
-    if (itemsInput && saveBtn) {
-        saveBtn.addEventListener('click', () => {
-            const newItems = itemsInput.value.split(',').map(s => s.trim()).filter(Boolean);
-            if (notesData[comp] && typeof notesData[comp] === 'object') {
-                notesData[comp].items = newItems;
-                notesData[comp].lastEdited = new Date().toISOString();
-            } else {
-                notesData[comp] = { notes: notesText, items: newItems, lastEdited: new Date().toISOString() };
-            }
-            // Save file and update UI
-            try {
-                fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
-            } catch (error) {
-                console.error('Error saving items:', error);
-            }
-            createNavigation();
-            if (savedMsg) {
-                savedMsg.textContent = SYSTEM_MESSAGES.saved;
-                savedMsg.style.display = 'inline';
-                setTimeout(() => { savedMsg.style.display = 'none'; }, 1200);
-            }
-            // update main meta
-            const mainMeta2 = document.getElementById('current-comp-meta');
-            if (mainMeta2) mainMeta2.textContent = `Last edited: ${formatDate(notesData[comp].lastEdited)}`;
-        });
-        // Save on Enter
-        itemsInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                saveBtn.click();
-                itemsInput.blur();
-            }
-        });
-    }
-
-    // Update contenteditable div with HTML content
-    const editorDiv = document.getElementById('comp-notes-editor');
-    if (editorDiv) {
-        console.log('Setting editor HTML, length:', notesText.length);
-        editorDiv.innerHTML = notesText || '';
-        // Ensure the editor is visible and focused
-        editorDiv.style.display = '';
-    }
-
-    // Show delete button
-    const headerDeleteBtn = document.getElementById('delete-current-comp-btn');
-    if (headerDeleteBtn) {
-        headerDeleteBtn.style.display = 'flex';
-    }
-}
-
-// Show add composition modal
-function showAddCompModal() {
-    const modal = document.getElementById('add-comp-modal');
-    const input = document.getElementById('comp-name-input');
-    modal.classList.remove('hidden');
-    input.value = '';
-    input.focus();
-}
-
-// Hide add composition modal
-function hideAddCompModal() {
-    const modal = document.getElementById('add-comp-modal');
-    modal.classList.add('hidden');
-}
-
-// Add a new composition
-function addComp() {
-    const input = document.getElementById('comp-name-input');
-    const compName = input.value.trim();
-    
-    if (!compName || compName === '') {
-        return;
-    }
-    
-    const trimmedName = compName.toLowerCase();
-    
-    // Check if comp already exists
-    if (trimmedName in notesData) {
-        alert(SYSTEM_MESSAGES.addCompExists);
-        input.focus();
-        return;
-    }
-    
-    // Save current comp before adding new one
-    if (currentComp) {
-        saveNotes();
-    }
-    
-    // Add new comp with empty notes, tags and timestamp
-    notesData[trimmedName] = {
-        notes: '',
-        items: [],
-        tags: [], // <-- new: tags field
-        lastEdited: new Date().toISOString()
-    };
-    
-    // Save to file
-    try {
-        const dataDir = path.dirname(NOTES_FILE);
-        if (!fs.existsSync(dataDir)) {
-            fs.mkdirSync(dataDir, { recursive: true });
-        }
-        fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
-    } catch (error) {
-        console.error('Error saving notes:', error);
-        alert('Ett fel uppstod vid sparande: ' + error.message);
-        return;
-    }
-    
-    // Hide modal
-    hideAddCompModal();
-    
-    // Refresh navigation and switch to new comp
-    createNavigation();
-    switchToComp(trimmedName);
-}
-
-// Show delete confirmation modal (now uses native dialog via main process, falls back to in-app modal)
-async function showDeleteCompModal(comp) {
-    // Try native confirmation dialog first
-    try {
-        const confirmed = await safeInvoke('confirm-delete', comp);
-        if (confirmed) {
-            // Proceed to delete
-            deleteComp(comp);
-        } else {
-            // User cancelled - do nothing
-        }
-    } catch (err) {
-        logWarn('Native confirm failed, falling back to modal', err);
-        // Fallback: show existing in-app modal UI
-        const modal = document.getElementById('delete-comp-modal');
-        const message = document.getElementById('delete-comp-message');
-        if (message) message.textContent = SYSTEM_MESSAGES.deleteConfirm(comp);
-        if (modal) {
-            modal.setAttribute('data-comp-to-delete', comp);
-            modal.classList.remove('hidden');
-        }
-    }
-}
-
-// Delete a composition (called after confirmation)
-// Accept an optional comp parameter; if omitted, read from modal attribute (backwards compatible)
-function deleteComp(comp) {
-    const modal = document.getElementById('delete-comp-modal');
-    if (!comp && modal) {
-        comp = modal.getAttribute('data-comp-to-delete');
-    }
-
-    if (!comp) {
-        console.error('No comp to delete specified');
-        hideDeleteCompModal();
-        return;
-    }
-
-    console.log('Deleting comp:', comp);
-
-    const compOrder = getCompOrder();
-
-    // Don't allow deleting if it's the only comp
-    if (compOrder.length <= 1) {
-        alert(SYSTEM_MESSAGES.deleteLastComp);
-        hideDeleteCompModal();
-        return;
-    }
-
-    // Save current comp before deleting
-    if (currentComp) {
-        saveNotes();
-    }
-
-    // Find another comp to switch to BEFORE deleting
-    let switchTo = null;
-    if (currentComp === comp) {
-        const currentIndex = compOrder.indexOf(comp);
-        if (currentIndex < compOrder.length - 1) {
-            switchTo = compOrder[currentIndex + 1];
-        } else if (currentIndex > 0) {
-            switchTo = compOrder[currentIndex - 1];
-        }
-    }
-
-    // Delete the comp from notesData
-    if (!(comp in notesData)) {
-        console.error('Comp not found in notesData:', comp);
-        hideDeleteCompModal();
-        return;
-    }
-
-    const compData = notesData[comp];
-    delete notesData[comp];
-
-    // Save to file
-    try {
-        fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
-    } catch (error) {
-        console.error('Error saving notes:', error);
-        // Restore on failure
-        notesData[comp] = compData;
-        alert('Ett fel uppstod vid borttagning: ' + error.message);
-        hideDeleteCompModal();
-        return;
-    }
-
-    // Hide modal if open
-    hideDeleteCompModal();
-
-    const wasCurrentComp = (currentComp === comp);
-    if (wasCurrentComp) {
-        currentComp = null;
-    }
-
-    // Refresh navigation
-    createNavigation();
-
-    // Switch to another comp if needed
-    if (wasCurrentComp) {
-        if (switchTo && switchTo in notesData) {
-            setTimeout(() => { switchToComp(switchTo); }, 10);
-        } else {
-            const noSelectionEl = document.getElementById('no-selection');
-            const tabContentEl = document.getElementById('tab-content');
-            if (noSelectionEl) noSelectionEl.classList.remove('hidden');
-            if (tabContentEl) tabContentEl.classList.add('hidden');
-            const headerDeleteBtn = document.getElementById('delete-current-comp-btn');
-            if (headerDeleteBtn) headerDeleteBtn.style.display = 'none';
-        }
-    }
-}
-
-// Setup textarea auto-save
-function setupAutoSave() {
-    const editorDiv = document.getElementById('comp-notes-editor');
-    if (editorDiv) {
-        editorDiv.addEventListener('input', debouncedSave);
-    }
-}
-
-// Setup search functionality
-function setupSearch() {
-    const searchInput = document.getElementById('search-input');
-    if (!searchInput) return;
-
-    // Live-search on input (no heavy debounce required; createNavigation is lightweight)
-    searchInput.addEventListener('input', (e) => {
-        searchQuery = e.target.value || '';
-        createNavigation();
-        // If currently viewing a comp, keep its editor content unchanged (avoid reloading unless switching)
-    });
-
-    // Keyboard shortcuts for search input:
-    // Enter -> switch to first matching comp (if any)
-    // Escape -> clear search
-    searchInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            const compOrder = getCompOrder();
-            const first = compOrder.find(c => compMatchesSearch(c, searchQuery));
-            if (first) {
-                // switch to notes view
-                const notesInterface = document.getElementById('notes-interface');
-                const plannerInterface = document.getElementById('planner-interface');
-                if (notesInterface && plannerInterface) {
-                    notesInterface.style.display = '';
-                    plannerInterface.style.display = 'none';
-                }
-                switchToComp(first);
-                // focus editor
                 const editorDiv = document.getElementById('comp-notes-editor');
                 if (editorDiv) editorDiv.focus();
             }
@@ -899,7 +342,6 @@ function setupPlannerInterface() {
     const plannerInterface = document.getElementById('planner-interface');
     if (!plannerInterface) return;
 
-    // Clear previous content
     plannerInterface.innerHTML = `
         <div class="tab-content-container">
             <div class="tab-content">
@@ -927,7 +369,6 @@ function setupPlannerInterface() {
         const selectedItems = input.split(',').map(s => s.trim()).filter(Boolean);
         const matchingComps = Object.entries(notesData).filter(([comp, data]) => {
             if (!data || typeof data !== 'object' || !Array.isArray(data.items)) return false;
-            // All selected items must be present in the comp's items
             return selectedItems.every(item => data.items.map(i => i.toLowerCase()).includes(item));
         });
         if (matchingComps.length === 0) {
@@ -941,12 +382,10 @@ function setupPlannerInterface() {
                 <div class="planner-comp-notes">${data.notes.replace(/\n/g, '<br>')}</div>
             </div>`
         ).join('');
-        // Add click event to each comp title to switch to that comp
         resultsDiv.querySelectorAll('.planner-comp-title').forEach(el => {
             el.addEventListener('click', (e) => {
                 const comp = e.target.getAttribute('data-comp');
                 if (comp) {
-                    // Switch to notes view and show the selected comp
                     document.getElementById('planner-interface').style.display = 'none';
                     document.getElementById('notes-interface').style.display = '';
                     switchToComp(comp);
@@ -984,14 +423,9 @@ function setupImagePaste() {
                     try {
                         const result = await safeInvoke('save-image', base64data, filename);
                         if (result && result.success) {
-                            // Insert image tag into editor
                             const imgPath = `../data/images/${filename}`;
                             const imgTag = `<img src="${imgPath}" alt="pasted-image" style="max-width:100%; border-radius:4px; margin:0.5rem 0;">`;
-
-                            // Insert at cursor position using execCommand
                             document.execCommand('insertHTML', false, imgTag);
-
-                            // Auto-save after inserting image
                             debouncedSave();
                         } else {
                             logWarn('save-image responded with failure', result);
@@ -1007,7 +441,6 @@ function setupImagePaste() {
             }
         }
 
-        // If no image, handle normal paste
         if (!imageFound) {
             const text = e.clipboardData.getData('text/plain');
             document.execCommand('insertText', false, text);
@@ -1032,7 +465,7 @@ async function exportCompsToClipboard(all = true) {
                     const buf = fs.readFileSync(path.join(imagesDir, f));
                     exportObj.images[f] = buf.toString('base64');
                 } catch (err) {
-                    console.warn('Failed to read image for clipboard export:', f, err);
+                    logWarn('Failed to read image for clipboard export:', f);
                 }
             }
         }
@@ -1040,7 +473,7 @@ async function exportCompsToClipboard(all = true) {
         clipboard.writeText(JSON.stringify(exportObj));
         alert('Kompositioner kopierade till urklipp (inkl. bilder).');
     } catch (error) {
-        console.error('Clipboard export failed', error);
+        logError('Clipboard export failed', error);
         alert('Export misslyckades: ' + (error && error.message ? error.message : String(error)));
     }
 }
@@ -1065,11 +498,9 @@ async function importCompsFromClipboard() {
         const comps = obj.comps || {};
         const images = obj.images || {};
 
-        // Ensure images dir exists
         const imagesDir = path.join(__dirname, '..', 'data', 'images');
         if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
 
-        // Write images (handle collisions by renaming)
         const writtenImages = {};
         for (const [name, b64] of Object.entries(images)) {
             try {
@@ -1085,11 +516,10 @@ async function importCompsFromClipboard() {
                 fs.writeFileSync(outPath, buf);
                 writtenImages[name] = outName;
             } catch (err) {
-                console.warn('Failed to write imported image', name, err);
+                logWarn('Failed to write imported image', name);
             }
         }
 
-        // Merge comps into notesData with collision-safe names
         const importedNames = [];
         Object.entries(comps).forEach(([name, data]) => {
             let target = name;
@@ -1099,18 +529,15 @@ async function importCompsFromClipboard() {
                 while ((`${base}-imported${i > 1 ? '-' + i : ''}`) in notesData) i++;
                 target = `${base}-imported${i > 1 ? '-' + i : ''}`;
             }
-            // If comp references images by original filenames, user images were renamed; best-effort replace
             if (data && typeof data === 'object' && data.notes && Object.keys(writtenImages).length) {
                 let notesHtml = data.notes;
                 Object.entries(writtenImages).forEach(([orig, newName]) => {
-                    // replace occurrences of original image path with new path
                     notesHtml = notesHtml.split(`../data/images/${orig}`).join(`../data/images/${newName}`);
                     notesHtml = notesHtml.split(`data/images/${orig}`).join(`../data/images/${newName}`);
                     notesHtml = notesHtml.split(orig).join(newName);
                 });
                 data.notes = notesHtml;
             }
-            // Ensure structure
             if (!data || typeof data !== 'object') {
                 data = { notes: typeof data === 'string' ? data : '', items: [], lastEdited: new Date().toISOString() };
             } else {
@@ -1122,24 +549,22 @@ async function importCompsFromClipboard() {
             importedNames.push(target);
         });
 
-        // Save to file
         try {
             const dataDir = path.dirname(NOTES_FILE);
             if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
             fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
         } catch (err) {
-            console.error('Failed to save notes after import', err);
+            logError('Failed to save notes after import', err);
             alert('Fel vid sparande efter import: ' + (err && err.message ? err.message : String(err)));
             return;
         }
 
-        // Reload UI
         loadNotes();
         createNavigation();
 
         alert('Import klart. Kompositioner importerade: ' + (importedNames.length ? importedNames.join(', ') : '0'));
     } catch (error) {
-        console.error('Clipboard import failed', error);
+        logError('Clipboard import failed', error);
         alert('Import misslyckades: ' + (error && error.message ? error.message : String(error)));
     }
 }
@@ -1202,11 +627,8 @@ function createLogButtonUI() {
     btn.addEventListener('click', async () => {
         try {
             ensureLogDir();
-            // Try to open directly using shell
             const opened = await shell.openPath(LOG_DIR);
-            // shell.openPath returns '' on success, otherwise error string
             if (opened && opened.length) {
-                // fallback: ask main process (if available)
                 try {
                     await safeInvoke('open-log-folder', LOG_DIR);
                 } catch (e) {
@@ -1223,6 +645,420 @@ function createLogButtonUI() {
     document.body.appendChild(btn);
 }
 
+// Create navigation buttons for all comps
+function createTagFilterUI() {
+    const nav = document.getElementById('comp-nav');
+    if (!nav) return;
+
+    let container = document.getElementById('tag-filter-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'tag-filter-container';
+        container.style.padding = '8px';
+        container.style.borderBottom = '1px solid #eee';
+        nav.parentNode.insertBefore(container, nav);
+    }
+
+    const tags = getAllTags();
+    container.innerHTML = `
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+            <input id="tag-filter-input" placeholder="Filter by tag" style="flex:1;padding:6px;border-radius:4px;border:1px solid #ccc;" value="${activeTagFilter || ''}">
+            <button id="tag-filter-clear" title="Clear filter" style="padding:6px;border-radius:4px;border:1px solid #ccc;background:#fff;">Rensa</button>
+        </div>
+        <div id="tag-list" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+    `;
+
+    const input = document.getElementById('tag-filter-input');
+    const clearBtn = document.getElementById('tag-filter-clear');
+    const tagList = document.getElementById('tag-list');
+
+    if (input) {
+        input.addEventListener('input', (e) => {
+            activeTagFilter = e.target.value.trim();
+            createNavigation();
+        });
+    }
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            activeTagFilter = '';
+            if (input) input.value = '';
+            createNavigation();
+        });
+    }
+
+    tagList.innerHTML = tags.map(t => {
+        const active = (t === activeTagFilter) ? 'background:#e6f4ff;border-color:#9ad1ff;' : '';
+        return `<button class="tag-chip" data-tag="${t}" style="padding:4px 8px;border-radius:12px;border:1px solid #ccc;${active};cursor:pointer;font-size:0.85rem">${t}</button>`;
+    }).join('');
+
+    tagList.querySelectorAll('.tag-chip').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const tag = btn.getAttribute('data-tag');
+            setTagFilter(tag);
+            createTagFilterUI();
+        });
+    });
+}
+
+function createNavigation() {
+    const nav = document.getElementById('comp-nav');
+    if (!nav) return;
+    nav.innerHTML = '';
+
+    createTagFilterUI();
+
+    const compOrder = getCompOrder();
+    const filteredComps = compOrder.filter(comp => {
+        if (searchQuery && searchQuery.trim() !== '' && !compMatchesSearch(comp, searchQuery)) return false;
+        if (activeTagFilter && activeTagFilter.trim() !== '') {
+            const compData = notesData[comp] && typeof notesData[comp] === 'object' ? notesData[comp] : null;
+            const tags = compData && Array.isArray(compData.tags) ? compData.tags.map(t => (t || '').toLowerCase()) : [];
+            if (!tags.includes(activeTagFilter.toLowerCase())) return false;
+        }
+        return true;
+    });
+
+    if (filteredComps.length === 0 && searchQuery) {
+        const noResults = document.createElement('div');
+        noResults.className = 'no-search-results';
+        noResults.textContent = SYSTEM_MESSAGES.noResults;
+        noResults.style.padding = '1rem';
+        noResults.style.color = '#707070';
+        noResults.style.textAlign = 'center';
+        nav.appendChild(noResults);
+        return;
+    }
+
+    filteredComps.forEach(comp => {
+        const button = document.createElement('button');
+        button.className = 'nav-button';
+        button.setAttribute('data-comp', comp);
+
+        const compData = notesData[comp] && typeof notesData[comp] === 'object' ? notesData[comp] : null;
+        const lastEdited = compData ? compData.lastEdited : null;
+        const tags = compData && Array.isArray(compData.tags) ? compData.tags : [];
+
+        const titleHtml = searchQuery
+            ? highlightSearchMatches(capitalizeCompName(comp), searchQuery)
+            : capitalizeCompName(comp);
+
+        const tagsHtml = tags.length ? `<div class="nav-tags">${tags.map(t => `<span class="nav-tag" data-tag="${t}" style="display:inline-block;padding:2px 6px;margin:4px 4px 0 0;border-radius:10px;background:#f1f1f1;border:1px solid #e0e0e0;cursor:pointer;font-size:0.75rem;">${t}</span>`).join('')}</div>` : '';
+
+        const metaHtml = lastEdited ? `<div class="nav-meta">Senast ändrad: ${formatDate(lastEdited)}</div>` : '';
+        button.innerHTML = `<div class="nav-title">${titleHtml}</div>${tagsHtml}${metaHtml}`;
+
+        button.addEventListener('click', () => {
+            const notesInterface = document.getElementById('notes-interface');
+            const plannerInterface = document.getElementById('planner-interface');
+            if (notesInterface && plannerInterface) {
+                notesInterface.style.display = '';
+                plannerInterface.style.display = 'none';
+            }
+            switchToComp(comp);
+        });
+
+        nav.appendChild(button);
+    });
+
+    nav.querySelectorAll('.nav-tag').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const tag = el.getAttribute('data-tag');
+            setTagFilter(tag);
+            createTagFilterUI();
+        });
+    });
+}
+
+// Switch to a specific comp
+function switchToComp(comp) {
+    logDebug('Switching to comp:', comp);
+    document.querySelectorAll('.nav-button').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-comp') === comp) {
+            btn.classList.add('active');
+        }
+    });
+    
+    const deleteBtn = document.getElementById('delete-current-comp-btn');
+    if (deleteBtn) {
+        const newDeleteBtn = deleteBtn.cloneNode(true);
+        deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
+        newDeleteBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            showDeleteCompModal(comp);
+        });
+    }
+    
+    if (currentComp) {
+        saveNotes();
+    }
+    
+    currentComp = comp;
+    
+    const noSelEl = document.getElementById('no-selection');
+    const tabContentEl = document.getElementById('tab-content');
+    if (noSelEl) noSelEl.classList.add('hidden');
+    if (tabContentEl) tabContentEl.classList.remove('hidden');
+    
+    const titleEl = document.getElementById('current-comp-title');
+    if (titleEl) titleEl.textContent = capitalizeCompName(comp);
+    
+    let notesText = '';
+    let itemsArr = [];
+    let compObj = null;
+    if (notesData[comp] && typeof notesData[comp] === 'object') {
+        compObj = notesData[comp];
+        notesText = compObj.notes || '';
+        itemsArr = compObj.items || [];
+    } else {
+        notesText = notesData[comp] || '';
+        itemsArr = [];
+    }
+    
+    const mainMeta = document.getElementById('current-comp-meta');
+    if (mainMeta) {
+        const lastEdited = compObj && compObj.lastEdited ? compObj.lastEdited : null;
+        mainMeta.textContent = lastEdited ? `Last edited: ${formatDate(lastEdited)}` : '';
+    }
+    
+    logDebug('Comp data', { comp, notesText: notesText.substring(0, 50), itemsArr });
+
+    let itemsDiv = document.getElementById('comp-items');
+    if (!itemsDiv) {
+        itemsDiv = document.createElement('div');
+        itemsDiv.id = 'comp-items';
+        itemsDiv.className = 'comp-items';
+        const tabContent = document.getElementById('tab-content');
+        const tabHeader = tabContent ? tabContent.querySelector('.tab-header') : null;
+        if (tabHeader) {
+            tabHeader.insertAdjacentElement('afterend', itemsDiv);
+        } else if (tabContent) {
+            tabContent.appendChild(itemsDiv);
+        }
+    }
+    
+    itemsDiv.innerHTML = `
+        <strong>Items:</strong>
+        <input id="comp-items-input" class="comp-items-input" type="text" value="${itemsArr.join(', ')}" placeholder="Sword, Bow, Rod">
+        <button id="save-items-btn" class="save-items-btn" title="Spara items">💾</button>
+        <span id="items-saved-msg" class="items-saved-msg" style="display:none; margin-left:8px; color:#4caf50; font-size:0.95em;">${SYSTEM_MESSAGES.saved}</span>
+    `;
+    
+    const itemsInput = document.getElementById('comp-items-input');
+    const saveBtn = document.getElementById('save-items-btn');
+    const savedMsg = document.getElementById('items-saved-msg');
+    if (itemsInput && saveBtn) {
+        saveBtn.addEventListener('click', () => {
+            const newItems = itemsInput.value.split(',').map(s => s.trim()).filter(Boolean);
+            if (notesData[comp] && typeof notesData[comp] === 'object') {
+                notesData[comp].items = newItems;
+                notesData[comp].lastEdited = new Date().toISOString();
+            } else {
+                notesData[comp] = { notes: notesText, items: newItems, lastEdited: new Date().toISOString() };
+            }
+            try {
+                fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
+            } catch (error) {
+                logError('Error saving items:', error);
+            }
+            createNavigation();
+            if (savedMsg) {
+                savedMsg.textContent = SYSTEM_MESSAGES.saved;
+                savedMsg.style.display = 'inline';
+                setTimeout(() => { savedMsg.style.display = 'none'; }, 1200);
+            }
+            const mainMeta2 = document.getElementById('current-comp-meta');
+            if (mainMeta2) mainMeta2.textContent = `Last edited: ${formatDate(notesData[comp].lastEdited)}`;
+        });
+        itemsInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                saveBtn.click();
+                itemsInput.blur();
+            }
+        });
+    }
+
+    const editorDiv = document.getElementById('comp-notes-editor');
+    if (editorDiv) {
+        logDebug('Setting editor HTML, length: ' + (notesText ? notesText.length : 0));
+        editorDiv.innerHTML = notesText || '';
+        editorDiv.style.display = '';
+    }
+
+    const headerDeleteBtn = document.getElementById('delete-current-comp-btn');
+    if (headerDeleteBtn) {
+        headerDeleteBtn.style.display = 'flex';
+    }
+}
+
+// Show add composition modal
+function showAddCompModal() {
+    const modal = document.getElementById('add-comp-modal');
+    const input = document.getElementById('comp-name-input');
+    modal.classList.remove('hidden');
+    input.value = '';
+    input.focus();
+}
+
+// Hide add composition modal
+function hideAddCompModal() {
+    const modal = document.getElementById('add-comp-modal');
+    modal.classList.add('hidden');
+}
+
+// Add a new composition
+function addComp() {
+    const input = document.getElementById('comp-name-input');
+    const compName = input.value.trim();
+    
+    if (!compName || compName === '') {
+        return;
+    }
+    
+    const trimmedName = compName.toLowerCase();
+    
+    if (trimmedName in notesData) {
+        alert(SYSTEM_MESSAGES.addCompExists);
+        input.focus();
+        return;
+    }
+    
+    if (currentComp) {
+        saveNotes();
+    }
+    
+    notesData[trimmedName] = {
+        notes: '',
+        items: [],
+        tags: [],
+        lastEdited: new Date().toISOString()
+    };
+    
+    try {
+        const dataDir = path.dirname(NOTES_FILE);
+        if (!fs.existsSync(dataDir)) {
+            fs.mkdirSync(dataDir, { recursive: true });
+        }
+        fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
+    } catch (error) {
+        logError('Error saving notes:', error);
+        alert('Ett fel uppstod vid sparande: ' + error.message);
+        return;
+    }
+    
+    hideAddCompModal();
+    createNavigation();
+    switchToComp(trimmedName);
+}
+
+// Show delete confirmation modal (now uses native dialog via main process, falls back to in-app modal)
+async function showDeleteCompModal(comp) {
+    try {
+        const confirmed = await safeInvoke('confirm-delete', comp);
+        if (confirmed) {
+            deleteComp(comp);
+        }
+    } catch (err) {
+        logWarn('Native confirm failed, falling back to modal', err);
+        const modal = document.getElementById('delete-comp-modal');
+        const message = document.getElementById('delete-comp-message');
+        if (message) message.textContent = SYSTEM_MESSAGES.deleteConfirm(comp);
+        if (modal) {
+            modal.setAttribute('data-comp-to-delete', comp);
+            modal.classList.remove('hidden');
+        }
+    }
+}
+
+// Delete a composition (called after confirmation)
+function deleteComp(comp) {
+    const modal = document.getElementById('delete-comp-modal');
+    if (!comp && modal) {
+        comp = modal.getAttribute('data-comp-to-delete');
+    }
+
+    if (!comp) {
+        logError('No comp to delete specified');
+        hideDeleteCompModal();
+        return;
+    }
+
+    logDebug('Deleting comp:', comp);
+
+    const compOrder = getCompOrder();
+
+    if (compOrder.length <= 1) {
+        alert(SYSTEM_MESSAGES.deleteLastComp);
+        hideDeleteCompModal();
+        return;
+    }
+
+    if (currentComp) {
+        saveNotes();
+    }
+
+    let switchTo = null;
+    if (currentComp === comp) {
+        const currentIndex = compOrder.indexOf(comp);
+        if (currentIndex < compOrder.length - 1) {
+            switchTo = compOrder[currentIndex + 1];
+        } else if (currentIndex > 0) {
+            switchTo = compOrder[currentIndex - 1];
+        }
+    }
+
+    if (!(comp in notesData)) {
+        logError('Comp not found in notesData: ' + comp);
+        hideDeleteCompModal();
+        return;
+    }
+
+    const compData = notesData[comp];
+    delete notesData[comp];
+
+    try {
+        fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
+    } catch (error) {
+        logError('Error saving notes:', error);
+        notesData[comp] = compData;
+        alert('Ett fel uppstod vid borttagning: ' + error.message);
+        hideDeleteCompModal();
+        return;
+    }
+
+    hideDeleteCompModal();
+
+    const wasCurrentComp = (currentComp === comp);
+    if (wasCurrentComp) {
+        currentComp = null;
+    }
+
+    createNavigation();
+
+    if (wasCurrentComp) {
+        if (switchTo && switchTo in notesData) {
+            setTimeout(() => { switchToComp(switchTo); }, 10);
+        } else {
+            const noSelectionEl = document.getElementById('no-selection');
+            const tabContentEl = document.getElementById('tab-content');
+            if (noSelectionEl) noSelectionEl.classList.remove('hidden');
+            if (tabContentEl) tabContentEl.classList.add('hidden');
+            const headerDeleteBtn = document.getElementById('delete-current-comp-btn');
+            if (headerDeleteBtn) headerDeleteBtn.style.display = 'none';
+        }
+    }
+}
+
+// Setup textarea auto-save
+function setupAutoSave() {
+    const editorDiv = document.getElementById('comp-notes-editor');
+    if (editorDiv) {
+        editorDiv.addEventListener('input', debouncedSave);
+    }
+}
+
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     loadNotes();
@@ -1230,13 +1066,10 @@ document.addEventListener('DOMContentLoaded', () => {
     setupAutoSave();
     setupImagePaste();
 
-    // Create clipboard toolbar for export/import
     createClipboardToolbar();
 
-    // Create log button UI
     setTimeout(createLogButtonUI, 50);
 
-    // Setup add button (do it here to ensure DOM is ready)
     const addBtn = document.getElementById('add-comp-btn');
     if (addBtn) {
         addBtn.addEventListener('click', (e) => {
@@ -1246,7 +1079,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Setup modal buttons
     const modalCancelBtn = document.getElementById('modal-cancel-btn');
     const modalAddBtn = document.getElementById('modal-add-btn');
     const compNameInput = document.getElementById('comp-name-input');
@@ -1263,7 +1095,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Allow Enter key to submit
     if (compNameInput) {
         compNameInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
@@ -1276,7 +1107,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Close modal when clicking outside
     const addModal = document.getElementById('add-comp-modal');
     if (addModal) {
         addModal.addEventListener('click', (e) => {
@@ -1286,7 +1116,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Setup delete confirmation modal
     const deleteModal = document.getElementById('delete-comp-modal');
     const deleteCancelBtn = document.getElementById('delete-modal-cancel-btn');
     const deleteConfirmBtn = document.getElementById('delete-modal-confirm-btn');
@@ -1311,14 +1140,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Show no-selection message initially
-    document.getElementById('no-selection').classList.remove('hidden');
-    document.getElementById('tab-content').classList.add('hidden');
+    const noSel = document.getElementById('no-selection');
+    if (noSel) noSel.classList.remove('hidden');
+    const tabCont = document.getElementById('tab-content');
+    if (tabCont) tabCont.classList.add('hidden');
     
-    // Setup search functionality
     setupSearch();
 
-    // Setup Planner tab button
     const plannerTabBtn = document.getElementById('planner-tab-btn');
     const notesInterface = document.getElementById('notes-interface');
     const plannerInterface = document.getElementById('planner-interface');
