@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -66,6 +66,28 @@ ipcMain.handle('delete-image', async (event, filename) => {
   } catch (error) {
     console.error('Error deleting image:', error);
     return { success: false, error: error.message };
+  }
+});
+
+// Native confirm dialog for destructive actions (delete)
+// Returns true if the user confirmed deletion.
+ipcMain.handle('confirm-delete', async (event, compName) => {
+  try {
+    const parent = BrowserWindow.getFocusedWindow ? BrowserWindow.getFocusedWindow() : null;
+    const result = await dialog.showMessageBox(parent, {
+      type: 'warning',
+      buttons: ['Delete', 'Cancel'],
+      defaultId: 1,
+      cancelId: 1,
+      title: 'Confirm deletion',
+      message: `Are you sure you want to delete "${compName}"? This action cannot be undone.`,
+      detail: 'This will remove the composition from local storage.',
+      noLink: true
+    });
+    return result.response === 0;
+  } catch (err) {
+    console.error('confirm-delete handler error:', err);
+    return false;
   }
 });
 

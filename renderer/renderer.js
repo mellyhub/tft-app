@@ -535,132 +535,115 @@ function addComp() {
     switchToComp(trimmedName);
 }
 
-// Show delete confirmation modal
-function showDeleteCompModal(comp) {
-    const modal = document.getElementById('delete-comp-modal');
-    const message = document.getElementById('delete-comp-message');
-    message.textContent = SYSTEM_MESSAGES.deleteConfirm(comp);
-    modal.setAttribute('data-comp-to-delete', comp);
-    modal.classList.remove('hidden');
-}
-
-// Hide delete confirmation modal
-function hideDeleteCompModal() {
-    const modal = document.getElementById('delete-comp-modal');
-    modal.classList.add('hidden');
-    modal.removeAttribute('data-comp-to-delete');
+// Show delete confirmation modal (now uses native dialog via main process, falls back to in-app modal)
+async function showDeleteCompModal(comp) {
+    // Try native confirmation dialog first
+    try {
+        const confirmed = await ipcRenderer.invoke('confirm-delete', comp);
+        if (confirmed) {
+            // Proceed to delete
+            deleteComp(comp);
+        } else {
+            // User cancelled - do nothing
+        }
+    } catch (err) {
+        console.warn('Native confirm failed, falling back to modal:', err);
+        // Fallback: show existing in-app modal UI
+        const modal = document.getElementById('delete-comp-modal');
+        const message = document.getElementById('delete-comp-message');
+        if (message) message.textContent = SYSTEM_MESSAGES.deleteConfirm(comp);
+        if (modal) {
+            modal.setAttribute('data-comp-to-delete', comp);
+            modal.classList.remove('hidden');
+        }
+    }
 }
 
 // Delete a composition (called after confirmation)
-function deleteComp() {
+// Accept an optional comp parameter; if omitted, read from modal attribute (backwards compatible)
+function deleteComp(comp) {
     const modal = document.getElementById('delete-comp-modal');
-    const comp = modal.getAttribute('data-comp-to-delete');
-    
+    if (!comp && modal) {
+        comp = modal.getAttribute('data-comp-to-delete');
+    }
+
     if (!comp) {
-        console.error('No comp to delete found in modal');
+        console.error('No comp to delete specified');
+        hideDeleteCompModal();
         return;
     }
-    
+
     console.log('Deleting comp:', comp);
-    
+
     const compOrder = getCompOrder();
-    
+
     // Don't allow deleting if it's the only comp
     if (compOrder.length <= 1) {
         alert(SYSTEM_MESSAGES.deleteLastComp);
         hideDeleteCompModal();
         return;
     }
-    
+
     // Save current comp before deleting
     if (currentComp) {
         saveNotes();
     }
-    
+
     // Find another comp to switch to BEFORE deleting
     let switchTo = null;
     if (currentComp === comp) {
         const currentIndex = compOrder.indexOf(comp);
-        // Try to switch to next comp, or previous if it's the last one
         if (currentIndex < compOrder.length - 1) {
             switchTo = compOrder[currentIndex + 1];
         } else if (currentIndex > 0) {
             switchTo = compOrder[currentIndex - 1];
         }
     }
-    
+
     // Delete the comp from notesData
     if (!(comp in notesData)) {
         console.error('Comp not found in notesData:', comp);
         hideDeleteCompModal();
         return;
     }
-    
-    // Store the comp data temporarily in case we need to restore
+
     const compData = notesData[comp];
     delete notesData[comp];
-    
-    // Verify deletion
-    if (comp in notesData) {
-        console.error('Failed to delete comp from notesData');
-        hideDeleteCompModal();
-        return;
-    }
-    
-    console.log('Comp deleted from notesData. Remaining comps:', Object.keys(notesData));
-    
+
     // Save to file
     try {
         fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
-        console.log('Notes file saved after deletion');
-        
-        // Verify the file was saved correctly by reading it back
-        const savedData = JSON.parse(fs.readFileSync(NOTES_FILE, 'utf8'));
-        if (comp in savedData) {
-            console.error('Comp still exists in saved file!');
-            // Restore and abort
-            notesData[comp] = compData;
-            fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
-            alert('Ett fel uppstod vid borttagning. Kompositionen kunde inte tas bort.');
-            hideDeleteCompModal();
-            return;
-        }
     } catch (error) {
         console.error('Error saving notes:', error);
-        // Restore the comp if save failed
+        // Restore on failure
         notesData[comp] = compData;
         alert('Ett fel uppstod vid borttagning: ' + error.message);
         hideDeleteCompModal();
         return;
     }
-    
-    // Hide modal first
+
+    // Hide modal if open
     hideDeleteCompModal();
-    
-    // Update currentComp if we deleted the current one
+
     const wasCurrentComp = (currentComp === comp);
     if (wasCurrentComp) {
         currentComp = null;
     }
-    
-    // Refresh navigation FIRST (this will rebuild the list from updated notesData)
+
+    // Refresh navigation
     createNavigation();
-    
-    // Then switch to another comp if needed
+
+    // Switch to another comp if needed
     if (wasCurrentComp) {
         if (switchTo && switchTo in notesData) {
-            // Small delay to ensure navigation is fully updated
-            setTimeout(() => {
-                switchToComp(switchTo);
-            }, 10);
+            setTimeout(() => { switchToComp(switchTo); }, 10);
         } else {
-            // Show no-selection if we deleted the current comp and have no other to switch to
-            document.getElementById('no-selection').classList.remove('hidden');
-            document.getElementById('tab-content').classList.add('hidden');
+            const noSelectionEl = document.getElementById('no-selection');
+            const tabContentEl = document.getElementById('tab-content');
+            if (noSelectionEl) noSelectionEl.classList.remove('hidden');
+            if (tabContentEl) tabContentEl.classList.add('hidden');
             const headerDeleteBtn = document.getElementById('delete-current-comp-btn');
-            if (headerDeleteBtn) {
-                headerDeleteBtn.style.display = 'none';
-            }
+            if (headerDeleteBtn) headerDeleteBtn.style.display = 'none';
         }
     }
 }
