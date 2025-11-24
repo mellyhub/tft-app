@@ -147,23 +147,110 @@ function capitalizeCompName(comp) {
     ).join(' ');
 }
 
-// Check if a composition matches the search query
-function compMatchesSearch(comp, query) {
-    if (!query || query.trim() === '') return true;
-    
-    const queryLower = query.toLowerCase();
-    const compName = comp.toLowerCase();
-    const notes = (notesData[comp] || '').toLowerCase();
-    
-    return compName.includes(queryLower) || notes.includes(queryLower);
+// Strip HTML tags for searching plain text inside saved notes
+function stripHtml(html) {
+    if (!html || typeof html !== 'string') return '';
+    // remove tags
+    return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
-// Highlight search matches in text
+// Split search query into tokens (ignore empty tokens)
+function getSearchTokens(query) {
+    if (!query || typeof query !== 'string') return [];
+    return query
+        .toLowerCase()
+        .split(/\s+/)
+        .map(t => t.trim())
+        .filter(Boolean);
+}
+
+// Check if a composition matches the search query (all tokens must match somewhere)
+function compMatchesSearch(comp, query) {
+    if (!query || query.trim() === '') return true;
+    const tokens = getSearchTokens(query);
+    if (tokens.length === 0) return true;
+
+    const compName = (comp || '').toLowerCase();
+    const compData = notesData[comp] && typeof notesData[comp] === 'object' ? notesData[comp] : null;
+    const notesText = compData ? stripHtml(compData.notes || '') : (notesData[comp] || '').toLowerCase();
+    const items = compData && Array.isArray(compData.items) ? compData.items.map(i => (i || '').toLowerCase()) : [];
+    const tags = compData && Array.isArray(compData.tags) ? compData.tags.map(t => (t || '').toLowerCase()) : [];
+
+    // All tokens must match at least one field (title OR notes OR items OR tags)
+    return tokens.every(token => {
+        if (compName.includes(token)) return true;
+        if (notesText.includes(token)) return true;
+        if (items.some(i => i.includes(token))) return true;
+        if (tags.some(t => t.includes(token))) return true;
+        return false;
+    });
+}
+
+// Highlight all search tokens in a given text (returns HTML with <mark class="search-highlight">)
 function highlightSearchMatches(text, query) {
-    if (!query || query.trim() === '') return text;
-    
-    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return text.replace(regex, '<mark class="search-highlight">$1</mark>');
+    if (!query || query.trim() === '') return escapeHtml(text);
+    const tokens = getSearchTokens(query);
+    if (tokens.length === 0) return escapeHtml(text);
+
+    // Escape tokens for regex and build alternation
+    const escaped = tokens.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const re = new RegExp(`(${escaped.join('|')})`, 'gi');
+
+    // Escape incoming text then replace matches
+    return escapeHtml(text).replace(re, '<mark class="search-highlight">$1</mark>');
+}
+
+// Small helper to escape HTML when inserting text into innerHTML (prevents accidental HTML injection)
+function escapeHtml(unsafe) {
+    return (unsafe || '').toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// Setup search input behaviour (wire it to createNavigation and allow Enter to select first match)
+function setupSearch() {
+    const searchInput = document.getElementById('search-input');
+    if (!searchInput) return;
+
+    // Live-search on input (no heavy debounce required; createNavigation is lightweight)
+    searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value || '';
+        createNavigation();
+        // If currently viewing a comp, keep its editor content unchanged (avoid reloading unless switching)
+    });
+
+    // Keyboard shortcuts for search input:
+    // Enter -> switch to first matching comp (if any)
+    // Escape -> clear search
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const compOrder = getCompOrder();
+            const first = compOrder.find(c => compMatchesSearch(c, searchQuery));
+            if (first) {
+                // switch to notes view
+                const notesInterface = document.getElementById('notes-interface');
+                const plannerInterface = document.getElementById('planner-interface');
+                if (notesInterface && plannerInterface) {
+                    notesInterface.style.display = '';
+                    plannerInterface.style.display = 'none';
+                }
+                switchToComp(first);
+                // focus editor
+                const editorDiv = document.getElementById('comp-notes-editor');
+                if (editorDiv) editorDiv.focus();
+            }
+        } else if (e.key === 'Escape') {
+            if (searchQuery && searchQuery.length > 0) {
+                searchQuery = '';
+                searchInput.value = '';
+                createNavigation();
+            }
+        }
+    });
 }
 
 // Get a sorted list of all tags present in notesData
@@ -660,15 +747,40 @@ function setupAutoSave() {
 function setupSearch() {
     const searchInput = document.getElementById('search-input');
     if (!searchInput) return;
+
+    // Live-search on input (no heavy debounce required; createNavigation is lightweight)
     searchInput.addEventListener('input', (e) => {
-        searchQuery = e.target.value;
+        searchQuery = e.target.value || '';
         createNavigation();
-        // Clear editor display - don't show highlighted matches
-        if (currentComp) {
-            const editorDiv = document.getElementById('comp-notes-editor');
-            const notesText = notesData[currentComp] || '';
-            if (editorDiv && typeof notesData[currentComp] === 'object') {
-                editorDiv.innerHTML = notesData[currentComp].notes || '';
+        // If currently viewing a comp, keep its editor content unchanged (avoid reloading unless switching)
+    });
+
+    // Keyboard shortcuts for search input:
+    // Enter -> switch to first matching comp (if any)
+    // Escape -> clear search
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const compOrder = getCompOrder();
+            const first = compOrder.find(c => compMatchesSearch(c, searchQuery));
+            if (first) {
+                // switch to notes view
+                const notesInterface = document.getElementById('notes-interface');
+                const plannerInterface = document.getElementById('planner-interface');
+                if (notesInterface && plannerInterface) {
+                    notesInterface.style.display = '';
+                    plannerInterface.style.display = 'none';
+                }
+                switchToComp(first);
+                // focus editor
+                const editorDiv = document.getElementById('comp-notes-editor');
+                if (editorDiv) editorDiv.focus();
+            }
+        } else if (e.key === 'Escape') {
+            if (searchQuery && searchQuery.length > 0) {
+                searchQuery = '';
+                searchInput.value = '';
+                createNavigation();
             }
         }
     });
