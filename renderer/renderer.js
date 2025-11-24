@@ -645,7 +645,32 @@ function createLogButtonUI() {
     document.body.appendChild(btn);
 }
 
-// Create navigation buttons for all comps
+// Create navigation buttons for all comps and tag filter UI
+function getAllTags() {
+    const set = new Set();
+    Object.values(notesData).forEach(v => {
+        if (v && Array.isArray(v.tags)) {
+            v.tags.forEach(t => {
+                if (t && typeof t === 'string') set.add(t);
+            });
+        }
+    });
+    return Array.from(set).sort((a,b) => a.localeCompare(b));
+}
+
+function setTagFilter(tag) {
+    if (!tag) {
+        activeTagFilter = '';
+    } else if (activeTagFilter === tag) {
+        activeTagFilter = '';
+    } else {
+        activeTagFilter = tag;
+    }
+    createNavigation();
+    const input = document.getElementById('tag-filter-input');
+    if (input) input.value = activeTagFilter || '';
+}
+
 function createTagFilterUI() {
     const nav = document.getElementById('comp-nav');
     if (!nav) return;
@@ -688,7 +713,7 @@ function createTagFilterUI() {
 
     tagList.innerHTML = tags.map(t => {
         const active = (t === activeTagFilter) ? 'background:#e6f4ff;border-color:#9ad1ff;' : '';
-        return `<button class="tag-chip" data-tag="${t}" style="padding:4px 8px;border-radius:12px;border:1px solid #ccc;${active};cursor:pointer;font-size:0.85rem">${t}</button>`;
+        return `<button class="tag-chip" data-tag="${escapeHtml(t)}" style="padding:4px 8px;border-radius:12px;border:1px solid #ccc;${active};cursor:pointer;font-size:0.85rem">${escapeHtml(t)}</button>`;
     }).join('');
 
     tagList.querySelectorAll('.tag-chip').forEach(btn => {
@@ -732,6 +757,7 @@ function createNavigation() {
     filteredComps.forEach(comp => {
         const button = document.createElement('button');
         button.className = 'nav-button';
+        button.style.position = 'relative';
         button.setAttribute('data-comp', comp);
 
         const compData = notesData[comp] && typeof notesData[comp] === 'object' ? notesData[comp] : null;
@@ -742,10 +768,33 @@ function createNavigation() {
             ? highlightSearchMatches(capitalizeCompName(comp), searchQuery)
             : capitalizeCompName(comp);
 
-        const tagsHtml = tags.length ? `<div class="nav-tags">${tags.map(t => `<span class="nav-tag" data-tag="${t}" style="display:inline-block;padding:2px 6px;margin:4px 4px 0 0;border-radius:10px;background:#f1f1f1;border:1px solid #e0e0e0;cursor:pointer;font-size:0.75rem;">${t}</span>`).join('')}</div>` : '';
+        const tagsHtml = tags.length ? `<div class="nav-tags">${tags.map(t => `<span class="nav-tag" data-tag="${escapeHtml(t)}" style="display:inline-block;padding:2px 6px;margin:4px 4px 0 0;border-radius:10px;background:#f1f1f1;border:1px solid #e0e0e0;cursor:pointer;font-size:0.75rem;">${escapeHtml(t)}</span>`).join('')}</div>` : '';
 
         const metaHtml = lastEdited ? `<div class="nav-meta">Senast ändrad: ${formatDate(lastEdited)}</div>` : '';
         button.innerHTML = `<div class="nav-title">${titleHtml}</div>${tagsHtml}${metaHtml}`;
+
+        // left accent color
+        const derivedColor = getCompColor(comp);
+        const colorAccent = document.createElement('div');
+        colorAccent.className = 'nav-color-accent';
+        colorAccent.style.position = 'absolute';
+        colorAccent.style.left = '0';
+        colorAccent.style.top = '0';
+        colorAccent.style.bottom = '0';
+        colorAccent.style.width = '4px';
+        colorAccent.style.borderTopLeftRadius = '4px';
+        colorAccent.style.borderBottomLeftRadius = '4px';
+        colorAccent.style.background = derivedColor;
+        button.appendChild(colorAccent);
+
+        // apply left accent from comp color
+        try {
+            const accent = getCompColor(comp);
+            button.style.borderLeft = `4px solid ${accent}`;
+            button.style.paddingLeft = '10px';
+        } catch (e) {
+            // ignore accent errors
+        }
 
         button.addEventListener('click', () => {
             const notesInterface = document.getElementById('notes-interface');
@@ -822,7 +871,10 @@ function switchToComp(comp) {
         const lastEdited = compObj && compObj.lastEdited ? compObj.lastEdited : null;
         mainMeta.textContent = lastEdited ? `Last edited: ${formatDate(lastEdited)}` : '';
     }
-    
+
+    // render color strip + picker for this comp
+    try { renderColorPicker(comp); } catch (e) { logWarn('renderColorPicker failed', e); }
+
     logDebug('Comp data', { comp, notesText: notesText.substring(0, 50), itemsArr });
 
     let itemsDiv = document.getElementById('comp-items');
@@ -1061,7 +1113,7 @@ function setupAutoSave() {
     }
 }
 
-// --- Tag editor helpers (insert after normalizeNotesData or near other helpers) ---
+// --- Tag editor helpers ---
 function renderTagEditor(comp) {
     if (!comp) return;
     let tagsContainer = document.getElementById('comp-tags');
@@ -1229,6 +1281,156 @@ function removeTagFromComp(comp, tag) {
     }
 }
 
+// ===== comp color helpers (deterministic fallback + picker) =====
+function nameToColor(name) {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        hash |= 0;
+    }
+    const h = Math.abs(hash) % 360;               // hue
+    const s = 55 + (Math.abs(hash) % 20);         // saturation 55-74
+    const l = 45 + (Math.abs(hash) % 10);         // lightness 45-54
+    return `hsl(${h}, ${s}%, ${l}%)`;
+}
+
+function hslToHex(hsl) {
+    // expects "hsl(h, s%, l%)"
+    const m = hsl.match(/hsl\(\s*([\d.]+),\s*([\d.]+)%\s*,\s*([\d.]+)%\s*\)/i);
+    if (!m) return '#888888';
+    let h = Number(m[1]) / 360;
+    let s = Number(m[2]) / 100;
+    let l = Number(m[3]) / 100;
+
+    function hue2rgb(p, q, t) {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1/6) return p + (q - p) * 6 * t;
+        if (t < 1/2) return q;
+        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        return p;
+    }
+
+    let r, g, b;
+    if (s === 0) {
+        r = g = b = l; // achromatic
+    } else {
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+    }
+
+    const toHex = (x) => {
+        const hex = Math.round(x * 255).toString(16).padStart(2, '0');
+        return hex;
+    };
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+function anyColorToHex(colorStr) {
+    if (!colorStr) return '#888888';
+    if (colorStr.startsWith('#')) return colorStr;
+    if (colorStr.startsWith('hsl')) return hslToHex(colorStr);
+    return '#888888';
+}
+
+function getCompColor(compName) {
+    const comp = notesData[compName];
+    if (comp && comp.color) return comp.color;
+    if (comp && Array.isArray(comp.tags) && comp.tags.length) {
+        return nameToColor(comp.tags[0]);
+    }
+    return nameToColor(compName);
+}
+
+// Add a small color-picker in the comp header (saves immediate override)
+function renderColorPicker(comp) {
+    const titleEl = document.getElementById('current-comp-title');
+    if (!titleEl) return;
+
+    // container for picker strip
+    let picker = document.getElementById('comp-color-picker');
+    let strip = document.getElementById('comp-color-strip');
+
+    // create strip (thin bar above title) if missing
+    if (!strip) {
+        strip = document.createElement('div');
+        strip.id = 'comp-color-strip';
+        strip.style.height = '6px';
+        strip.style.width = '100%';
+        strip.style.borderRadius = '4px';
+        strip.style.marginBottom = '8px';
+        const tabContent = document.getElementById('tab-content');
+        if (tabContent) tabContent.insertAdjacentElement('afterbegin', strip);
+    }
+
+    const derived = getCompColor(comp);
+    strip.style.background = derived;
+
+    // create picker if missing
+    if (!picker) {
+        picker = document.createElement('input');
+        picker.type = 'color';
+        picker.id = 'comp-color-picker';
+        picker.title = 'Set comp color (override)';
+        picker.style.marginLeft = '8px';
+        picker.style.verticalAlign = 'middle';
+        picker.style.cursor = 'pointer';
+
+        // clear button
+        const clearBtn = document.createElement('button');
+        clearBtn.id = 'comp-color-clear';
+        clearBtn.title = 'Clear comp color override';
+        clearBtn.textContent = '✕';
+        clearBtn.style.marginLeft = '6px';
+        clearBtn.style.padding = '2px 6px';
+        clearBtn.style.border = '1px solid #ddd';
+        clearBtn.style.background = '#fff';
+        clearBtn.style.cursor = 'pointer';
+        clearBtn.style.borderRadius = '4px';
+        clearBtn.style.fontSize = '0.85rem';
+
+        // insert into header area near title
+        titleEl.insertAdjacentElement('afterend', picker);
+        titleEl.insertAdjacentElement('afterend', clearBtn);
+
+        picker.addEventListener('input', () => {
+            try {
+                if (!notesData[comp] || typeof notesData[comp] !== 'object') notesData[comp] = { notes: '', items: [], tags: [], lastEdited: new Date().toISOString() };
+                notesData[comp].color = picker.value;
+                notesData[comp].lastEdited = new Date().toISOString();
+                fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
+                strip.style.background = picker.value;
+                createNavigation();
+            } catch (err) {
+                logError('Error saving comp color', err);
+                showToast('Fel vid sparande av färg.', 'error');
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            try {
+                if (notesData[comp] && notesData[comp].color) delete notesData[comp].color;
+                notesData[comp].lastEdited = new Date().toISOString();
+                fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
+                const newColor = getCompColor(comp);
+                strip.style.background = newColor;
+                picker.value = anyColorToHex(newColor);
+                createNavigation();
+            } catch (err) {
+                logError('Error clearing comp color', err);
+                showToast('Fel vid återställning av färg.', 'error');
+            }
+        });
+    }
+
+    // set picker value (convert fallback HSL to hex when needed)
+    const val = (notesData[comp] && notesData[comp].color) ? notesData[comp].color : derived;
+    picker.value = anyColorToHex(val);
+}
+
 // Initialize app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     loadNotes();
@@ -1237,7 +1439,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupImagePaste();
 
     createClipboardToolbar();
-
     setTimeout(createLogButtonUI, 50);
 
     const addBtn = document.getElementById('add-comp-btn');
