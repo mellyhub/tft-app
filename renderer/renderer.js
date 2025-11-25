@@ -116,6 +116,7 @@ let currentComp = null;
 let notesData = {};
 let searchQuery = '';
 let activeTagFilter = '';
+let toolbarResizeObserver = null; // added: observer to keep toolbar/log button layout in sync
 
 // System messages (Swedish only)
 const SYSTEM_MESSAGES = {
@@ -369,7 +370,7 @@ function setupPlannerInterface() {
         const selectedItems = input.split(',').map(s => s.trim()).filter(Boolean);
         const matchingComps = Object.entries(notesData).filter(([comp, data]) => {
             if (!data || typeof data !== 'object' || !Array.isArray(data.items)) return false;
-            return selectedItems.every(item => data.items.map(i => i.toLowerCase()).includes(item));
+            return selectedItems.every item => data.items.map(i => i.toLowerCase()).includes(item));
         });
         if (matchingComps.length === 0) {
             resultsDiv.innerHTML = `<div class="planner-empty-message">${SYSTEM_MESSAGES.noCompsMatch}</div>`;
@@ -575,14 +576,21 @@ function createClipboardToolbar() {
 
     const toolbar = document.createElement('div');
     toolbar.id = 'clipboard-toolbar';
+    toolbar.setAttribute('aria-label', 'Clipboard tools');
     toolbar.style.position = 'fixed';
-    toolbar.style.left = '12px';
+    toolbar.style.right = '12px';
+    toolbar.style.left = 'auto';
     toolbar.style.bottom = '12px';
     toolbar.style.zIndex = '9999';
     toolbar.style.display = 'flex';
+    toolbar.style.flexDirection = 'column'; // stack vertically to avoid overlap
+    toolbar.style.alignItems = 'stretch';
     toolbar.style.gap = '8px';
+    toolbar.style.maxWidth = '240px';
+    toolbar.style.boxSizing = 'border-box';
+    toolbar.style.padding = '6px';
 
-    const btnStyle = 'padding:6px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer;font-size:0.85rem;';
+    const btnStyle = 'width:100%;padding:8px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer;font-size:0.9rem;text-align:center;box-sizing:border-box;';
 
     const copyAll = document.createElement('button');
     copyAll.textContent = 'Kopiera alla (urklipp)';
@@ -613,8 +621,9 @@ function createLogButtonUI() {
     btn.id = 'open-log-btn';
     btn.title = 'Open logs folder';
     btn.style.position = 'fixed';
-    btn.style.left = '12px';
-    btn.style.bottom = '68px'; // above clipboard toolbar
+    btn.style.right = '12px';
+    btn.style.left = 'auto';
+    // bottom is set dynamically below to avoid overlap with toolbar
     btn.style.zIndex = '10000';
     btn.style.padding = '6px 8px';
     btn.style.borderRadius = '6px';
@@ -643,6 +652,48 @@ function createLogButtonUI() {
     });
 
     document.body.appendChild(btn);
+
+    // position function — places button above the clipboard toolbar (if present)
+    function positionLogBtn() {
+        const toolbar = document.getElementById('clipboard-toolbar');
+        let offset = 12; // default bottom offset
+        try {
+            if (toolbar) {
+                const rect = toolbar.getBoundingClientRect();
+                // place the log button above the toolbar with a 12px gap
+                offset = Math.max(12, Math.ceil(rect.height) + 20);
+            }
+        } catch (e) {
+            // ignore measurement errors
+        }
+        btn.style.bottom = `${offset}px`;
+        btn.style.right = '12px';
+        btn.style.left = 'auto';
+    }
+
+    // initial position
+    setTimeout(positionLogBtn, 20);
+
+    // observe toolbar size changes so we can reposition the log button
+    const toolbarEl = document.getElementById('clipboard-toolbar');
+    if (toolbarEl) {
+        try {
+            if (toolbarResizeObserver) {
+                try { toolbarResizeObserver.disconnect(); } catch (e) {}
+                toolbarResizeObserver = null;
+            }
+            toolbarResizeObserver = new ResizeObserver(() => {
+                positionLogBtn();
+            });
+            toolbarResizeObserver.observe(toolbarEl);
+        } catch (e) {
+            // ResizeObserver may not be available in some environments — fallback to window resize
+            window.addEventListener('resize', positionLogBtn);
+        }
+    } else {
+        // if toolbar not present yet, still respond to window resize (in case toolbar appears)
+        window.addEventListener('resize', positionLogBtn);
+    }
 }
 
 // Create navigation buttons for all comps and tag filter UI
@@ -761,7 +812,6 @@ function createNavigation() {
         button.setAttribute('data-comp', comp);
 
         const compData = notesData[comp] && typeof notesData[comp] === 'object' ? notesData[comp] : null;
-        const lastEdited = compData ? compData.lastEdited : null;
         const tags = compData && Array.isArray(compData.tags) ? compData.tags : [];
 
         const titleHtml = searchQuery
@@ -770,8 +820,8 @@ function createNavigation() {
 
         const tagsHtml = tags.length ? `<div class="nav-tags">${tags.map(t => `<span class="nav-tag" data-tag="${escapeHtml(t)}" style="display:inline-block;padding:2px 6px;margin:4px 4px 0 0;border-radius:10px;background:#f1f1f1;border:1px solid #e0e0e0;cursor:pointer;font-size:0.75rem;">${escapeHtml(t)}</span>`).join('')}</div>` : '';
 
-        const metaHtml = lastEdited ? `<div class="nav-meta">Senast ändrad: ${formatDate(lastEdited)}</div>` : '';
-        button.innerHTML = `<div class="nav-title">${titleHtml}</div>${tagsHtml}${metaHtml}`;
+        // Do not show last-edited in the nav; it's displayed inside the comp view instead
+        button.innerHTML = `<div class="nav-title">${titleHtml}</div>${tagsHtml}`;
 
         // left accent color
         const derivedColor = getCompColor(comp);
