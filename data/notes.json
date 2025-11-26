@@ -5,7 +5,11 @@
       "Sword",
       "Tear",
       "Glove"
-    ]
+    ],
+    "tags": [
+      "Reroll"
+    ],
+    "lastEdited": "2025-11-26T11:51:16.839Z"
   },
   "ionia": {
     "notes": "- om du öppnar med ionia + bows: \n- kan finnas en reroll angle om du har yasuo + sword opener\n- kan spela runt yunara carry\n- extremt starkt om du får 10 ionia augment på 3-2\n- kan spela för high cap med sylas ifall du håller j4/garen/lux",
@@ -13,7 +17,11 @@
       "Bow",
       "Sword",
       "Crit"
-    ]
+    ],
+    "tags": [
+      "Fast-8"
+    ],
+    "lastEdited": "2025-11-26T11:51:09.196Z"
   },
   "targon asol": {
     "notes": "- spela med shojin/rageblade opener\n- fiska efter mana gen items till asol\n- spela för att få alla unlocks ASAP\n- lvl 9 board: taric + diana + leona + braum + asol + aphelios + anivia + liss + zoe",
@@ -22,7 +30,11 @@
       "Tear",
       "Bow",
       "Rod"
-    ]
+    ],
+    "tags": [
+      "Fast-8"
+    ],
+    "lastEdited": "2025-11-26T11:51:14.472Z"
   },
   "slayer": {
     "notes": "- slam tidiga bruiser items på briar (BT, hoj)<div><div>- kan spela med tidig ixtal 3 (briar, qiyana, neeko, millio)<div>- void flex angle om du har adrenaline mutation<br></div><div>- augments: \n</div><div>    tiny but deadly / precision &amp; grace = autowin\n</div><div>    Unsealed from Steel --&gt; Darkin Bow --&gt; Bel'Veth :) \n</div><div>    celestial blessing hjälper dig unlocka aatrox med bara BT</div><div>    TG augments</div><div>- BIS:</div><div><span style=\"font-size: clamp(0.9rem, 1.5vw, 1rem); letter-spacing: 0.01em;\">    Belveth: Kraken + QSS + Flexible 3rd (ideally damage item like Giant Slayer</span></div><div>    Aatrox: BT + CC Immunity (Titans or QSS) + Flexible 3rd (Rageblade typically)</div><div>    Gangplank: Can play double Omnivamp + Titans or IE-based builds</div><div>    Swain: Evenshroud + Vow</div><div>    Fiddlesticks: Any random AP you get</div><div>    Ambessa: Leftover Melee</div><div>- artifacts/radiants: </div><div>    Radiant TG</div><div>    Mittens Aatrox</div><div>    Death's Defiance Aatrox</div><div>    RFC Gangplank or Bel'Veth (build full damage)</div><div>    Flickerblade or Hellfire Hatchet Bel'Veth</div><div><span style=\"font-size: clamp(0.9rem, 1.5vw, 1rem); letter-spacing: 0.01em;\">    (kan vara bra? titanic hydra, silvermere dawn + blue buff)</span></div><div>- https://x.com/demacianraptor/status/1991914487927243151<div>- https://www.reddit.com/r/CompetitiveTFT/comments/1p3xnqh/slayers_comp_guide_by_gm_blue/<br><div><img src=\"../data/images/image-1763917836133.png\" alt=\"pasted-image\"></div></div></div></div></div>",
@@ -30,17 +42,29 @@
       "Sword",
       "Glove",
       "Cloak"
-    ]
+    ],
+    "tags": [
+      "Fast-8"
+    ],
+    "lastEdited": "2025-11-25T20:27:06.269Z"
   },
   "noxus": {
     "notes": "- stark opener om du får tidig draven, spela för winstreak\n- leblanc håller mel items, briar håller ambessa items\n- kan finnas en draven/darius reroll angle\n- draven med kraken är huge pga quickstriker, ie är bait",
-    "items": []
+    "items": [],
+    "tags": [
+      "Fast-8"
+    ],
+    "lastEdited": "2025-11-26T11:51:08.785Z"
   },
   "demacia": {
     "notes": "- giga starkt om du får demacia augment på 2-1\n- kan rulla lite lvl 7 för att hitta dina 2 stars eller potentiellt vayne 3 star\n- kan spela flex med 7 demacia + leona och diana carry",
     "items": [
       "Glove"
-    ]
+    ],
+    "tags": [
+      "Fast-8"
+    ],
+    "lastEdited": "2025-11-25T20:26:29.464Z"
   },
   "void": {
     "notes": "- kaisa flex board (bronze for life): https://x.com/bossoskills1/status/1992071085865705823\n- caster items till kaisa<div>- bis void = adren med rageblade, annars spikes<br><div><img src=\"../data/images/image-1763918682092.png\" alt=\"pasted-image\"></div><div><img src=\"../data/images/image-1763918685740.png\" alt=\"pasted-image\"></div></div>",
@@ -48,7 +72,9 @@
       "Sword",
       "Bow",
       "Rod"
-    ]
+    ],
+    "tags": [],
+    "lastEdited": "2025-11-25T20:11:44.282Z"
   },
   "shadow isles": {
     "notes": "- viego reroll: https://x.com/robinsongz/status/1991543224591348107\n- kan spela runt viego + kalista\n- viego behöver edge of night + sustain (hoj, bt, gunblade)\n- andra bra viego items: rageblade, titans, GS, rfc<div><img src=\"../data/images/image-1763918669127.png\" alt=\"pasted-image\"></div>",
@@ -56,28 +82,46 @@
       "Sword",
       "Glove",
       "Bow"
-    ]
+    ],
+    "tags": [
+      "Reroll"
+    ],
+    "lastEdited": "2025-11-25T20:26:50.352Z"
   },
   "shurima": {
     "notes": "- secrets of the sands är crazy\n- kan spelas med 4 targon + seraphine",
-    "items": []
+    "items": [],
+    "tags": [
+      "Fast-8"
+    ],
+    "lastEdited": "2025-11-26T11:51:13.534Z"
   },
   "bilgewater": {
     "notes": "- kräver giga combat augment för winstreak (t.ex no pivot no scout)\n- prioritera stats, items, och lesser dupes över units\n- lvl 7 gp reroll -----&gt; https://www.metatft.com/team-builder/team_66eff603-7cd8-4ec0-86d5-31380756c2de -----&gt; https://x.com/sologesangtv/status/1991514215111110691\n- bt + hoj på gp unlockar aatrox\n- ge tanks och casters till tahm kench (hp + ap)<div><img src=\"../data/images/image-1763918595386.png\" alt=\"pasted-image\"><img src=\"../data/images/image-1763918605322.png\" alt=\"pasted-image\"></div>",
     "items": [
       "Glove"
-    ]
+    ],
+    "tags": [
+      "Reroll"
+    ],
+    "lastEdited": "2025-11-26T12:06:34.271Z"
   },
   "xin hero augment": {
     "notes": "- kan fungera med yasuo reroll (vertikal ionia)\n- zaheen och xin samtidigt räknas inte för traits",
     "items": [
       "Sword",
       "Crit"
-    ]
+    ],
+    "tags": [
+      "Reroll"
+    ],
+    "lastEdited": "2025-11-26T11:51:15.389Z"
   },
   "rumble hero augment": {
     "notes": "- spela inte den här skiten",
-    "items": []
+    "items": [],
+    "tags": [],
+    "lastEdited": "2025-11-26T11:51:11.956Z"
   },
   "bard reroll": {
     "notes": "- https://x.com/techzzeng/status/1991309947787973016\n- sion bis spirit visage, dclaw, bramble\n- artifacts/radiants: talisman, void gauntlet, darkin aegis<div><img src=\"../data/images/image-1763918569406.png\" alt=\"pasted-image\"></div>",
@@ -85,11 +129,20 @@
       "Bow",
       "Cloak",
       "Belt"
-    ]
+    ],
+    "tags": [
+      "Reroll"
+    ],
+    "lastEdited": "2025-11-26T12:11:20.716Z",
+    "color": "#ffeb3b"
   },
   "cruel pact": {
     "notes": "- ez targon asol angle\n- pre lvl till 7 på 2-1 och rulla ner på 3-1",
-    "items": []
+    "items": [],
+    "tags": [
+      "Fast-8"
+    ],
+    "lastEdited": "2025-11-26T12:06:29.637Z"
   },
   "freljord ashe trynd reroll": {
     "notes": "- (cap voli, aatrox, kindred): https://tftacademy.com/tierlist/comps/set-16-ashe-trynd<div><img src=\"../data/images/image-1763918625989.png\" alt=\"pasted-image\"></div>",
@@ -97,7 +150,11 @@
       "Sword",
       "Bow",
       "Cloak"
-    ]
+    ],
+    "tags": [
+      "Reroll"
+    ],
+    "lastEdited": "2025-11-26T11:51:11.401Z"
   },
   "freljord fast 8 yunara": {
     "notes": "- bronze for life instawin: https://x.com/dishsoaptft/status/1991694484611174529\n- annan variant med braum + voli: https://x.com/demacianraptor/status/1991041091693400505<div><img src=\"../data/images/image-1763918637914.png\" alt=\"pasted-image\"></div><div><img src=\"../data/images/image-1763918646594.png\" alt=\"pasted-image\"></div>",
@@ -105,10 +162,18 @@
       "Bow",
       "Rod",
       "Cloak"
-    ]
+    ],
+    "tags": [
+      "Fast-8"
+    ],
+    "lastEdited": "2025-11-26T11:51:09.837Z"
   },
   "piltover t-hex": {
     "notes": "<div>- emblem på vi, rövdåligt utan</div><div>- ap items till seraphine/azir\n- water exalt + echo engine = op\n- Overload → Rockets → Echo Engine starkt om har bra tank items\n- thex items: bt, steraks, gs</div><div>- sac oriana för thex\n- eternal pact thex?? 🧑‍🍳</div>",
-    "items": []
+    "items": [],
+    "tags": [
+      "Fast-8"
+    ],
+    "lastEdited": "2025-11-25T20:26:41.986Z"
   }
 }

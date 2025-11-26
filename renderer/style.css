@@ -258,28 +258,7 @@ header h1 {
     white-space: nowrap;
 }
 
-.delete-header-btn {
-    background-color: transparent;
-    border: 1px solid #404040;
-    color: #b0b0b0;
-    padding: 0.5rem 0.75rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: clamp(0.9rem, 1.5vw, 1rem);
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 32px;
-    height: 32px;
-    flex-shrink: 0;
-}
-
-.delete-header-btn:hover {
-    background-color: #d32f2f;
-    border-color: #d32f2f;
-    color: #ffffff;
-}
+/* delete-header-btn styles removed — delete button is now accessed via unified menu */
 
 textarea {
     flex: 1;
@@ -299,8 +278,7 @@ textarea {
     min-width: 0;
     min-height: 0;
     letter-spacing: 0.01em;
-    /* Disable spellcheck underline in Chromium browsers */
-    spellcheck: false;
+    /* Disable spellcheck underline in Chromium browsers (handled via attribute, not CSS) */
 }
 
 textarea:focus {

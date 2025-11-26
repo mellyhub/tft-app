@@ -116,7 +116,7 @@ let currentComp = null;
 let notesData = {};
 let searchQuery = '';
 let activeTagFilter = '';
-let toolbarResizeObserver = null; // added: observer to keep toolbar/log button layout in sync
+// toolbarResizeObserver removed
 
 // System messages (Swedish only)
 const SYSTEM_MESSAGES = {
@@ -370,19 +370,22 @@ function setupPlannerInterface() {
         const selectedItems = input.split(',').map(s => s.trim()).filter(Boolean);
         const matchingComps = Object.entries(notesData).filter(([comp, data]) => {
             if (!data || typeof data !== 'object' || !Array.isArray(data.items)) return false;
-            return selectedItems.every item => data.items.map(i => i.toLowerCase()).includes(item));
+            return selectedItems.every(item => data.items.map(i => (i || '').toLowerCase()).includes(item));
         });
         if (matchingComps.length === 0) {
             resultsDiv.innerHTML = `<div class="planner-empty-message">${SYSTEM_MESSAGES.noCompsMatch}</div>`;
             return;
         }
-        resultsDiv.innerHTML = matchingComps.map(([comp, data]) =>
-            `<div class="planner-comp-result" data-comp="${comp}">
+        resultsDiv.innerHTML = matchingComps.map(([comp, data]) => {
+            // strip image tags from notes for planner results
+            const notesSafe = (data.notes || '').toString().replace(/<img[^>]*>/gi, '').replace(/\n/g, '<br>');
+            return `
+            <div class="planner-comp-result" data-comp="${comp}">
                 <div class="planner-comp-title" style="cursor:pointer; color:#4a9eff; text-decoration:underline;" data-comp="${comp}">${capitalizeCompName(comp)}</div>
-                <div class="planner-comp-items">Items: ${data.items.join(', ')}</div>
-                <div class="planner-comp-notes">${data.notes.replace(/\n/g, '<br>')}</div>
-            </div>`
-        ).join('');
+                <div class="planner-comp-items">Items: ${Array.isArray(data.items) ? data.items.join(', ') : ''}</div>
+                <div class="planner-comp-notes">${notesSafe}</div>
+            </div>`;
+        }).join('');
         resultsDiv.querySelectorAll('.planner-comp-title').forEach(el => {
             el.addEventListener('click', (e) => {
                 const comp = e.target.getAttribute('data-comp');
@@ -570,129 +573,27 @@ async function importCompsFromClipboard() {
     }
 }
 
-// Small clipboard toolbar UI (copy/paste)
-function createClipboardToolbar() {
-    if (document.getElementById('clipboard-toolbar')) return;
+// Clipboard toolbar removed
 
-    const toolbar = document.createElement('div');
-    toolbar.id = 'clipboard-toolbar';
-    toolbar.setAttribute('aria-label', 'Clipboard tools');
-    toolbar.style.position = 'fixed';
-    toolbar.style.right = '12px';
-    toolbar.style.left = 'auto';
-    toolbar.style.bottom = '12px';
-    toolbar.style.zIndex = '9999';
-    toolbar.style.display = 'flex';
-    toolbar.style.flexDirection = 'column'; // stack vertically to avoid overlap
-    toolbar.style.alignItems = 'stretch';
-    toolbar.style.gap = '8px';
-    toolbar.style.maxWidth = '240px';
-    toolbar.style.boxSizing = 'border-box';
-    toolbar.style.padding = '6px';
+// Floating log button removed
 
-    const btnStyle = 'width:100%;padding:8px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer;font-size:0.9rem;text-align:center;box-sizing:border-box;';
-
-    const copyAll = document.createElement('button');
-    copyAll.textContent = 'Kopiera alla (urklipp)';
-    copyAll.style.cssText = btnStyle;
-    copyAll.addEventListener('click', () => exportCompsToClipboard(true));
-
-    const copyCurrent = document.createElement('button');
-    copyCurrent.textContent = 'Kopiera aktuell (urklipp)';
-    copyCurrent.style.cssText = btnStyle;
-    copyCurrent.addEventListener('click', () => exportCompsToClipboard(false));
-
-    const pasteBtn = document.createElement('button');
-    pasteBtn.textContent = 'Klistra in från urklipp';
-    pasteBtn.style.cssText = btnStyle;
-    pasteBtn.addEventListener('click', () => importCompsFromClipboard());
-
-    toolbar.appendChild(copyAll);
-    toolbar.appendChild(copyCurrent);
-    toolbar.appendChild(pasteBtn);
-    document.body.appendChild(toolbar);
-}
-
-// Add a small log-folder button in the UI (near clipboard toolbar)
-function createLogButtonUI() {
-    if (document.getElementById('open-log-btn')) return;
-
-    const btn = document.createElement('button');
-    btn.id = 'open-log-btn';
-    btn.title = 'Open logs folder';
-    btn.style.position = 'fixed';
-    btn.style.right = '12px';
-    btn.style.left = 'auto';
-    // bottom is set dynamically below to avoid overlap with toolbar
-    btn.style.zIndex = '10000';
-    btn.style.padding = '6px 8px';
-    btn.style.borderRadius = '6px';
-    btn.style.border = '1px solid #ccc';
-    btn.style.background = '#fff';
-    btn.style.cursor = 'pointer';
-    btn.style.fontSize = '0.85rem';
-    btn.textContent = 'Logs';
-
-    btn.addEventListener('click', async () => {
-        try {
-            ensureLogDir();
-            const opened = await shell.openPath(LOG_DIR);
-            if (opened && opened.length) {
-                try {
-                    await safeInvoke('open-log-folder', LOG_DIR);
-                } catch (e) {
-                    logWarn('open-log-folder ipc failed', e);
-                    showToast('Kunde inte öppna loggmappen automatiskt. Se loggfil i data/logs.', 'warn');
-                }
+// Open the logs folder (reusable helper). Attempts shell.openPath and
+// falls back to IPC if needed — mirrors the previous button behavior.
+async function openLogsFolder() {
+    try {
+        ensureLogDir();
+        const opened = await shell.openPath(LOG_DIR);
+        if (opened && opened.length) {
+            try {
+                await safeInvoke('open-log-folder', LOG_DIR);
+            } catch (e) {
+                logWarn('open-log-folder ipc failed', e);
+                showToast('Kunde inte öppna loggmappen automatiskt. Se loggfil i data/logs.', 'warn');
             }
-        } catch (err) {
-            logError('Failed to open log folder', err);
-            showToast('Kunde inte öppna loggmappen. Se loggfil.', 'error');
         }
-    });
-
-    document.body.appendChild(btn);
-
-    // position function — places button above the clipboard toolbar (if present)
-    function positionLogBtn() {
-        const toolbar = document.getElementById('clipboard-toolbar');
-        let offset = 12; // default bottom offset
-        try {
-            if (toolbar) {
-                const rect = toolbar.getBoundingClientRect();
-                // place the log button above the toolbar with a 12px gap
-                offset = Math.max(12, Math.ceil(rect.height) + 20);
-            }
-        } catch (e) {
-            // ignore measurement errors
-        }
-        btn.style.bottom = `${offset}px`;
-        btn.style.right = '12px';
-        btn.style.left = 'auto';
-    }
-
-    // initial position
-    setTimeout(positionLogBtn, 20);
-
-    // observe toolbar size changes so we can reposition the log button
-    const toolbarEl = document.getElementById('clipboard-toolbar');
-    if (toolbarEl) {
-        try {
-            if (toolbarResizeObserver) {
-                try { toolbarResizeObserver.disconnect(); } catch (e) {}
-                toolbarResizeObserver = null;
-            }
-            toolbarResizeObserver = new ResizeObserver(() => {
-                positionLogBtn();
-            });
-            toolbarResizeObserver.observe(toolbarEl);
-        } catch (e) {
-            // ResizeObserver may not be available in some environments — fallback to window resize
-            window.addEventListener('resize', positionLogBtn);
-        }
-    } else {
-        // if toolbar not present yet, still respond to window resize (in case toolbar appears)
-        window.addEventListener('resize', positionLogBtn);
+    } catch (err) {
+        logError('Failed to open log folder', err);
+        showToast('Kunde inte öppna loggmappen. Se loggfil.', 'error');
     }
 }
 
@@ -718,8 +619,8 @@ function setTagFilter(tag) {
         activeTagFilter = tag;
     }
     createNavigation();
-    const input = document.getElementById('tag-filter-input');
-    if (input) input.value = activeTagFilter || '';
+    const selectEl = document.getElementById('tag-filter-select');
+    if (selectEl) selectEl.value = activeTagFilter || '';
 }
 
 function createTagFilterUI() {
@@ -738,26 +639,33 @@ function createTagFilterUI() {
     const tags = getAllTags();
     container.innerHTML = `
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-            <input id="tag-filter-input" placeholder="Filter by tag" style="flex:1;padding:6px;border-radius:4px;border:1px solid #ccc;" value="${activeTagFilter || ''}">
+            <select id="tag-filter-select" style="flex:1;padding:6px;border-radius:4px;border:1px solid #ccc;">
+                <option value="">Alla taggar</option>
+                <option value="Reroll">Reroll</option>
+                <option value="Fast-8">Fast-8</option>
+            </select>
             <button id="tag-filter-clear" title="Clear filter" style="padding:6px;border-radius:4px;border:1px solid #ccc;background:#fff;">Rensa</button>
         </div>
         <div id="tag-list" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
     `;
 
-    const input = document.getElementById('tag-filter-input');
+    const selectEl = document.getElementById('tag-filter-select');
     const clearBtn = document.getElementById('tag-filter-clear');
     const tagList = document.getElementById('tag-list');
 
-    if (input) {
-        input.addEventListener('input', (e) => {
-            activeTagFilter = e.target.value.trim();
+    if (selectEl) {
+        selectEl.addEventListener('change', (e) => {
+            const v = e.target.value || '';
+            activeTagFilter = v.trim();
             createNavigation();
         });
+        // initialize value
+        selectEl.value = activeTagFilter || '';
     }
     if (clearBtn) {
         clearBtn.addEventListener('click', () => {
             activeTagFilter = '';
-            if (input) input.value = '';
+            if (selectEl) selectEl.value = '';
             createNavigation();
         });
     }
@@ -818,10 +726,9 @@ function createNavigation() {
             ? highlightSearchMatches(capitalizeCompName(comp), searchQuery)
             : capitalizeCompName(comp);
 
-        const tagsHtml = tags.length ? `<div class="nav-tags">${tags.map(t => `<span class="nav-tag" data-tag="${escapeHtml(t)}" style="display:inline-block;padding:2px 6px;margin:4px 4px 0 0;border-radius:10px;background:#f1f1f1;border:1px solid #e0e0e0;cursor:pointer;font-size:0.75rem;">${escapeHtml(t)}</span>`).join('')}</div>` : '';
-
         // Do not show last-edited in the nav; it's displayed inside the comp view instead
-        button.innerHTML = `<div class="nav-title">${titleHtml}</div>${tagsHtml}`;
+        // Tags are intentionally omitted from the nav list for a cleaner UI
+        button.innerHTML = `<div class="nav-title">${titleHtml}</div>`;
 
         // left accent color
         const derivedColor = getCompColor(comp);
@@ -904,6 +811,123 @@ function switchToComp(comp) {
     const titleEl = document.getElementById('current-comp-title');
     if (titleEl) titleEl.textContent = capitalizeCompName(comp);
     
+    // add inline edit button next to title for renaming comp
+    let editBtn = document.getElementById('comp-edit-btn');
+    if (!editBtn) {
+        editBtn = document.createElement('button');
+        editBtn.id = 'comp-edit-btn';
+        editBtn.title = 'Redigera namn';
+        editBtn.textContent = '✏️';
+        editBtn.style.padding = '2px 6px';
+        editBtn.style.border = '1px solid #ddd';
+        editBtn.style.background = '#fff';
+        editBtn.style.cursor = 'pointer';
+        editBtn.style.borderRadius = '4px';
+        editBtn.style.fontSize = '0.9rem';
+        editBtn.style.verticalAlign = 'middle';
+        editBtn.style.marginLeft = '6px';
+        // place the edit button inside the title element so it stays on the left
+        if (titleEl) {
+            titleEl.style.display = 'inline-flex';
+            titleEl.style.alignItems = 'center';
+            titleEl.style.gap = '6px';
+            // append the button inside the title h2 so it stays with the title on the left
+            titleEl.appendChild(editBtn);
+        }
+    } else {
+        // ensure existing button has the correct alignment styles
+        editBtn.style.verticalAlign = 'middle';
+        editBtn.style.marginLeft = '6px';
+        if (titleEl) {
+            titleEl.style.display = 'inline-flex';
+            titleEl.style.alignItems = 'center';
+            titleEl.style.gap = '6px';
+            // move it inside the title if it's not already
+            if (editBtn.parentNode !== titleEl) {
+                titleEl.appendChild(editBtn);
+            }
+        }
+    }
+
+    function finishRename(oldKey, newKeyRaw) {
+        const newKey = (newKeyRaw || '').toString().trim().toLowerCase();
+        if (!newKey) {
+            showToast('Ogiltigt namn', 'warn');
+            return false;
+        }
+        if (newKey === oldKey) return true;
+        if (newKey in notesData) {
+            alert('En komposition med det namnet finns redan.');
+            return false;
+        }
+        // rename in notesData
+        try {
+            notesData[newKey] = notesData[oldKey];
+            // update meta if exists
+            notesData[newKey].lastEdited = new Date().toISOString();
+            delete notesData[oldKey];
+            fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
+            // switch view to new comp key
+            switchToComp(newKey);
+            return true;
+        } catch (err) {
+            logError('Error renaming comp', err);
+            showToast('Fel vid byta namn.', 'error');
+            return false;
+        }
+    }
+
+    editBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // hide title and show input
+        const inputId = 'comp-title-input';
+        if (document.getElementById(inputId)) return;
+        const input = document.createElement('input');
+        input.id = inputId;
+        input.type = 'text';
+        input.value = capitalizeCompName(comp);
+        input.style.marginLeft = '8px';
+        input.style.padding = '4px 6px';
+        input.style.fontSize = '1rem';
+        input.style.borderRadius = '4px';
+        input.style.border = '1px solid #ccc';
+        titleEl.style.display = 'none';
+        editBtn.style.display = 'none';
+        const deleteBtnEl = document.getElementById('delete-current-comp-btn');
+        if (deleteBtnEl) deleteBtnEl.style.display = 'none';
+        titleEl.parentNode.insertBefore(input, titleEl.nextSibling);
+        input.select();
+
+        function cleanupInput() {
+            if (input) input.remove();
+            titleEl.style.display = '';
+            editBtn.style.display = '';
+            if (deleteBtnEl) deleteBtnEl.style.display = 'flex';
+        }
+
+        input.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter') {
+                ev.preventDefault();
+                const newName = input.value.trim();
+                const ok = finishRename(comp, newName);
+                if (ok) return; // switchToComp already done
+                cleanupInput();
+            } else if (ev.key === 'Escape') {
+                cleanupInput();
+            }
+        });
+
+        input.addEventListener('blur', () => {
+            const newName = input.value.trim();
+            if (newName && newName.toLowerCase() !== comp) {
+                const ok = finishRename(comp, newName);
+                if (!ok) cleanupInput();
+            } else {
+                cleanupInput();
+            }
+        });
+    };
     let notesText = '';
     let itemsArr = [];
     let compObj = null;
@@ -941,24 +965,42 @@ function switchToComp(comp) {
         }
     }
     
+    // Added tag selector (single-choice) next to items input
+    const currentTag = (compObj && Array.isArray(compObj.tags) && compObj.tags.length > 0) ? compObj.tags[0] : '';
     itemsDiv.innerHTML = `
-        <strong>Items:</strong>
-        <input id="comp-items-input" class="comp-items-input" type="text" value="${itemsArr.join(', ')}" placeholder="Sword, Bow, Rod">
-        <button id="save-items-btn" class="save-items-btn" title="Spara items">💾</button>
-        <span id="items-saved-msg" class="items-saved-msg" style="display:none; margin-left:8px; color:#4caf50; font-size:0.95em;">${SYSTEM_MESSAGES.saved}</span>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <div style="flex:1;min-width:220px;">
+                <strong>Items:</strong>
+                <input id="comp-items-input" class="comp-items-input" type="text" value="${itemsArr.join(', ')}" placeholder="Sword, Bow, Rod" style="width:100%;">
+            </div>
+            <div style="min-width:160px;">
+                <strong>Tag:</strong>
+                <select id="comp-tag-select" style="width:100%;padding:6px;border-radius:4px;border:1px solid #ccc;">
+                    <option value="">(ingen)</option>
+                    <option value="Reroll">Reroll</option>
+                    <option value="Fast-8">Fast-8</option>
+                </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <!-- autosave: no save button -->
+            </div>
+        </div>
     `;
     
     const itemsInput = document.getElementById('comp-items-input');
-    const saveBtn = document.getElementById('save-items-btn');
-    const savedMsg = document.getElementById('items-saved-msg');
-    if (itemsInput && saveBtn) {
-        saveBtn.addEventListener('click', () => {
+    if (itemsInput) {
+        // Debounced auto-save for items
+        let itemsSaveTimeout = null;
+        const saveItemsForComp = () => {
             const newItems = itemsInput.value.split(',').map(s => s.trim()).filter(Boolean);
+            const tagSelect = document.getElementById('comp-tag-select');
+            const selectedTag = tagSelect && tagSelect.value ? tagSelect.value : '';
             if (notesData[comp] && typeof notesData[comp] === 'object') {
                 notesData[comp].items = newItems;
+                notesData[comp].tags = selectedTag ? [selectedTag] : [];
                 notesData[comp].lastEdited = new Date().toISOString();
             } else {
-                notesData[comp] = { notes: notesText, items: newItems, lastEdited: new Date().toISOString() };
+                notesData[comp] = { notes: notesText, items: newItems, tags: selectedTag ? [selectedTag] : [], lastEdited: new Date().toISOString() };
             }
             try {
                 fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
@@ -966,20 +1008,43 @@ function switchToComp(comp) {
                 logError('Error saving items:', error);
             }
             createNavigation();
-            if (savedMsg) {
-                savedMsg.textContent = SYSTEM_MESSAGES.saved;
-                savedMsg.style.display = 'inline';
-                setTimeout(() => { savedMsg.style.display = 'none'; }, 1200);
-            }
             const mainMeta2 = document.getElementById('current-comp-meta');
             if (mainMeta2) mainMeta2.textContent = `Last edited: ${formatDate(notesData[comp].lastEdited)}`;
+        };
+
+        itemsInput.addEventListener('input', () => {
+            if (itemsSaveTimeout) clearTimeout(itemsSaveTimeout);
+            itemsSaveTimeout = setTimeout(saveItemsForComp, SAVE_DELAY);
         });
+
         itemsInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                saveBtn.click();
+                e.preventDefault();
+                if (itemsSaveTimeout) clearTimeout(itemsSaveTimeout);
+                saveItemsForComp();
                 itemsInput.blur();
             }
         });
+        // initialize tag select value and auto-save on change
+        const tagSelectInit = document.getElementById('comp-tag-select');
+        if (tagSelectInit) {
+            tagSelectInit.value = currentTag || '';
+            tagSelectInit.addEventListener('change', () => {
+                const selectedTag = tagSelectInit.value || '';
+                try {
+                    if (!notesData[comp] || typeof notesData[comp] !== 'object') {
+                        notesData[comp] = { notes: notesText, items: itemsArr, tags: [], lastEdited: new Date().toISOString() };
+                    }
+                    notesData[comp].tags = selectedTag ? [selectedTag] : [];
+                    notesData[comp].lastEdited = new Date().toISOString();
+                    fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
+                    createNavigation();
+                } catch (err) {
+                    logError('Error auto-saving tag', err);
+                    // silent failure; no saved popup
+                }
+            });
+        }
     }
 
     const editorDiv = document.getElementById('comp-notes-editor');
@@ -994,7 +1059,7 @@ function switchToComp(comp) {
         headerDeleteBtn.style.display = 'flex';
     }
 
-    renderTagEditor(comp);
+    // legacy tag editor removed
 }
 
 // Show add composition modal
@@ -1172,185 +1237,12 @@ function setupAutoSave() {
     }
 }
 
-// --- Tag editor helpers ---
-function renderTagEditor(comp) {
-    if (!comp) return;
-    let tagsContainer = document.getElementById('comp-tags');
-    // create container if missing, place it below itemsDiv
-    if (!tagsContainer) {
-        tagsContainer = document.createElement('div');
-        tagsContainer.id = 'comp-tags';
-        tagsContainer.className = 'comp-tags';
-        const tabContent = document.getElementById('tab-content');
-        const itemsDiv = document.getElementById('comp-items');
-        if (itemsDiv && itemsDiv.parentNode) {
-            itemsDiv.parentNode.insertBefore(tagsContainer, itemsDiv.nextSibling);
-        } else if (tabContent) {
-            tabContent.appendChild(tagsContainer);
-        }
-    }
-
-    const compData = notesData[comp] && typeof notesData[comp] === 'object' ? notesData[comp] : { tags: [] };
-    const tags = Array.isArray(compData.tags) ? compData.tags : [];
-
-    tagsContainer.innerHTML = `
-        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
-            <strong>Tags:</strong>
-            <div id="tag-chip-list" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
-            <input id="tag-input" placeholder="Add tag and press Enter" style="margin-left:8px;padding:4px;border-radius:4px;border:1px solid #ccc;" />
-        </div>
-    `;
-
-    const chipList = document.getElementById('tag-chip-list');
-    const input = document.getElementById('tag-input');
-
-    // render chips
-    chipList.innerHTML = tags.map(t => {
-        const safe = escapeHtml(t);
-        return `<span class="tag-chip-edit" data-tag="${safe}" style="display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:12px;border:1px solid #ccc;background:#fafafa;"><span>${safe}</span><button class="tag-remove-btn" data-tag="${safe}" title="Remove" style="border:none;background:transparent;cursor:pointer;font-weight:700;line-height:1;">×</button></span>`;
-    }).join('');
-
-    // bind remove buttons
-    chipList.querySelectorAll('.tag-remove-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const tag = btn.getAttribute('data-tag');
-            removeTagFromComp(comp, tag);
-        });
-    });
-
-    // autocomplete simple suggestion dropdown
-    let suggestions = [];
-    const suggestBoxId = 'tag-suggest-box';
-    function updateSuggestBox() {
-        let box = document.getElementById(suggestBoxId);
-        if (!box) {
-            box = document.createElement('div');
-            box.id = suggestBoxId;
-            box.style.position = 'absolute';
-            box.style.background = '#fff';
-            box.style.border = '1px solid #ccc';
-            box.style.padding = '6px';
-            box.style.borderRadius = '4px';
-            box.style.boxShadow = '0 2px 6px rgba(0,0,0,0.12)';
-            box.style.zIndex = 10000;
-            document.body.appendChild(box);
-        }
-        if (!suggestions.length) {
-            box.style.display = 'none';
-            return;
-        }
-        box.style.display = '';
-        box.innerHTML = suggestions.map(s => `<div class="tag-suggest-item" data-val="${escapeHtml(s)}" style="padding:4px 8px;cursor:pointer;">${escapeHtml(s)}</div>`).join('');
-        // position under input
-        const rect = input.getBoundingClientRect();
-        box.style.left = `${rect.left}px`;
-        box.style.top = `${rect.bottom + 6}px`;
-        box.style.minWidth = `${rect.width}px`;
-
-        box.querySelectorAll('.tag-suggest-item').forEach(it => {
-            it.addEventListener('click', (ev) => {
-                const val = it.getAttribute('data-val');
-                addTagToComp(comp, val);
-                input.value = '';
-                suggestions = [];
-                updateSuggestBox();
-            });
-        });
-    }
-
-    input.addEventListener('input', (e) => {
-        const v = e.target.value.trim();
-        if (!v) {
-            suggestions = [];
-            updateSuggestBox();
-            return;
-        }
-        const all = getAllTags().filter(t => t.toLowerCase().includes(v.toLowerCase()) && !tags.map(x => x.toLowerCase()).includes(t.toLowerCase()));
-        suggestions = all.slice(0, 8);
-        updateSuggestBox();
-    });
-
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ',') {
-            e.preventDefault();
-            const val = input.value.trim();
-            if (val) {
-                addTagToComp(comp, val);
-                input.value = '';
-                suggestions = [];
-                updateSuggestBox();
-            }
-        } else if (e.key === 'Escape') {
-            input.value = '';
-            suggestions = [];
-            updateSuggestBox();
-        }
-    });
-
-    // hide suggest box on blur (small delay to allow click)
-    input.addEventListener('blur', () => {
-        setTimeout(() => {
-            const box = document.getElementById(suggestBoxId);
-            if (box) box.style.display = 'none';
-        }, 150);
-    });
-}
-
-function addTagToComp(comp, tag) {
-    if (!comp || !tag) return;
-    const clean = tag.toString().trim();
-    if (!clean) return;
-    if (!notesData[comp] || typeof notesData[comp] !== 'object') notesData[comp] = { notes: '', items: [], tags: [], lastEdited: new Date().toISOString() };
-    if (!Array.isArray(notesData[comp].tags)) notesData[comp].tags = [];
-    // avoid duplicates (case-insensitive)
-    const exists = notesData[comp].tags.some(t => t.toLowerCase() === clean.toLowerCase());
-    if (exists) {
-        showToast('Tag already present', 'warn');
-        return;
-    }
-    notesData[comp].tags.push(clean);
-    notesData[comp].lastEdited = new Date().toISOString();
-    try {
-        fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
-        logInfo(`Added tag "${clean}" to ${comp}`);
-        createNavigation();
-        renderTagEditor(comp);
-    } catch (err) {
-        logError('Error saving tag addition', err);
-        showToast('Fel vid sparande av tag.', 'error');
-    }
-}
-
-function removeTagFromComp(comp, tag) {
-    if (!comp || !tag) return;
-    if (!notesData[comp] || !Array.isArray(notesData[comp].tags)) return;
-    const before = notesData[comp].tags.length;
-    notesData[comp].tags = notesData[comp].tags.filter(t => t.toLowerCase() !== tag.toLowerCase());
-    if (notesData[comp].tags.length === before) return;
-    notesData[comp].lastEdited = new Date().toISOString();
-    try {
-        fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
-        logInfo(`Removed tag "${tag}" from ${comp}`);
-        createNavigation();
-        renderTagEditor(comp);
-    } catch (err) {
-        logError('Error saving tag removal', err);
-        showToast('Fel vid borttagning av tag.', 'error');
-    }
-}
+// Legacy tag editor removed. Tag management is now handled via the single-choice dropdown.
 
 // ===== comp color helpers (deterministic fallback + picker) =====
 function nameToColor(name) {
-    let hash = 0;
-    for (let i = 0; i < name.length; i++) {
-        hash = name.charCodeAt(i) + ((hash << 5) - hash);
-        hash |= 0;
-    }
-    const h = Math.abs(hash) % 360;               // hue
-    const s = 55 + (Math.abs(hash) % 20);         // saturation 55-74
-    const l = 45 + (Math.abs(hash) % 10);         // lightness 45-54
-    return `hsl(${h}, ${s}%, ${l}%)`;
+    // Return a single default greyscale color for all comps
+    return '#bdbdbd';
 }
 
 function hslToHex(hsl) {
@@ -1398,21 +1290,15 @@ function anyColorToHex(colorStr) {
 function getCompColor(compName) {
     const comp = notesData[compName];
     if (comp && comp.color) return comp.color;
-    if (comp && Array.isArray(comp.tags) && comp.tags.length) {
-        return nameToColor(comp.tags[0]);
-    }
-    return nameToColor(compName);
+    // Default to a single shared greyscale color for all comps
+    return '#bdbdbd';
 }
 
 // Add a small color-picker in the comp header (saves immediate override)
 function renderColorPicker(comp) {
     const titleEl = document.getElementById('current-comp-title');
     if (!titleEl) return;
-
-    let picker = document.getElementById('comp-color-picker');
-    let clearBtn = document.getElementById('comp-color-clear');
     let strip = document.getElementById('comp-color-strip');
-
     if (!strip) {
         strip = document.createElement('div');
         strip.id = 'comp-color-strip';
@@ -1427,72 +1313,236 @@ function renderColorPicker(comp) {
     const derived = getCompColor(comp);
     strip.style.background = derived;
 
-    // create picker if missing, otherwise reuse existing
-    if (!picker) {
-        picker = document.createElement('input');
-        picker.type = 'color';
-        picker.id = 'comp-color-picker';
-        picker.title = 'Set comp color (override)';
-        picker.style.marginLeft = '8px';
-        picker.style.verticalAlign = 'middle';
-        picker.style.cursor = 'pointer';
+    // palette of predetermined colors (hex)
+    const palette = ['#f44336','#e91e63','#9c27b0','#3f51b5','#03a9f4','#4caf50','#ff9800','#795548','#607d8b','#ffeb3b'];
 
-        // insert picker after title (place before clear button if it exists)
-        if (clearBtn && clearBtn.parentNode === titleEl.parentNode) {
-            titleEl.parentNode.insertBefore(picker, clearBtn);
-        } else {
-            titleEl.insertAdjacentElement('afterend', picker);
-        }
+    // create palette container
+    let paletteEl = document.getElementById('comp-color-palette');
+    if (!paletteEl) {
+        paletteEl = document.createElement('div');
+        paletteEl.id = 'comp-color-palette';
+        paletteEl.style.display = 'flex';
+        paletteEl.style.gap = '6px';
+        paletteEl.style.marginLeft = '8px';
+        paletteEl.style.marginTop = '6px';
+        paletteEl.style.flexWrap = 'wrap';
+        // insert after title (hidden by default)
+        paletteEl.style.display = 'none';
+        titleEl.insertAdjacentElement('afterend', paletteEl);
+    }
 
-        picker.addEventListener('input', () => {
+    // create a toggle button to show/hide palette (to keep UI tidy)
+    let toggleBtn = document.getElementById('comp-color-toggle');
+    if (!toggleBtn) {
+        toggleBtn = document.createElement('button');
+        toggleBtn.id = 'comp-color-toggle';
+        toggleBtn.textContent = 'Färg';
+        toggleBtn.title = 'Visa/dölj färgpalett';
+        toggleBtn.style.marginLeft = '8px';
+        toggleBtn.style.padding = '2px 6px';
+        toggleBtn.style.border = '1px solid #ddd';
+        toggleBtn.style.background = '#fff';
+        toggleBtn.style.cursor = 'pointer';
+        toggleBtn.style.borderRadius = '4px';
+        toggleBtn.style.fontSize = '0.85rem';
+        titleEl.insertAdjacentElement('afterend', toggleBtn);
+        // hide the inline toggle — the unified menu exposes color control
+        try { toggleBtn.style.display = 'none'; } catch (e) { /* ignore */ }
+        toggleBtn.addEventListener('click', () => {
+            try {
+                paletteEl.style.display = paletteEl.style.display === 'none' ? 'flex' : 'none';
+            } catch (e) { /* ignore */ }
+        });
+    }
+
+    // render swatches
+    paletteEl.innerHTML = '';
+    const currentColor = (notesData[comp] && notesData[comp].color) ? anyColorToHex(notesData[comp].color) : anyColorToHex(derived);
+    palette.forEach(col => {
+        const btn = document.createElement('button');
+        btn.className = 'comp-color-swatch';
+        btn.setAttribute('data-color', col);
+        btn.title = col;
+        btn.style.width = '22px';
+        btn.style.height = '22px';
+        btn.style.borderRadius = '4px';
+        btn.style.border = col.toLowerCase() === currentColor.toLowerCase() ? '2px solid #222' : '1px solid #ddd';
+        btn.style.background = col;
+        btn.style.cursor = 'pointer';
+        btn.addEventListener('click', () => {
             try {
                 if (!notesData[comp] || typeof notesData[comp] !== 'object') notesData[comp] = { notes: '', items: [], tags: [], lastEdited: new Date().toISOString() };
-                notesData[comp].color = picker.value;
+                notesData[comp].color = col;
                 notesData[comp].lastEdited = new Date().toISOString();
                 fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
-                strip.style.background = picker.value;
+                strip.style.background = col;
                 createNavigation();
+                // re-render to update selection border
+                renderColorPicker(comp);
             } catch (err) {
                 logError('Error saving comp color', err);
                 showToast('Fel vid sparande av färg.', 'error');
             }
         });
-    }
+        paletteEl.appendChild(btn);
+    });
 
-    // create clear button if missing
+    // clear/reset button to remove override
+    let clearBtn = document.getElementById('comp-color-clear');
     if (!clearBtn) {
         clearBtn = document.createElement('button');
         clearBtn.id = 'comp-color-clear';
-        clearBtn.title = 'Clear comp color override';
-        clearBtn.textContent = '✕';
-        clearBtn.style.marginLeft = '6px';
+        clearBtn.title = 'Reset color to default';
+        clearBtn.textContent = 'Återställ';
+        clearBtn.style.marginLeft = '8px';
         clearBtn.style.padding = '2px 6px';
         clearBtn.style.border = '1px solid #ddd';
         clearBtn.style.background = '#fff';
         clearBtn.style.cursor = 'pointer';
         clearBtn.style.borderRadius = '4px';
-        clearBtn.style.fontSize = '0.85rem';
-        titleEl.insertAdjacentElement('afterend', clearBtn);
+        clearBtn.style.fontSize = '0.75rem';
+        paletteEl.insertAdjacentElement('afterend', clearBtn);
+        // hide the inline clear/reset button — use unified menu for restore
+        try { clearBtn.style.display = 'none'; } catch (e) { /* ignore */ }
+    }
+    clearBtn.onclick = () => {
+        try {
+            if (notesData[comp] && notesData[comp].color) delete notesData[comp].color;
+            notesData[comp].lastEdited = new Date().toISOString();
+            fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
+            const newColor = getCompColor(comp);
+            strip.style.background = newColor;
+            createNavigation();
+            renderColorPicker(comp);
+        } catch (err) {
+            logError('Error clearing comp color', err);
+            showToast('Fel vid återställning av färg.', 'error');
+        }
+    };
+}
 
-        clearBtn.addEventListener('click', () => {
-            try {
-                if (notesData[comp] && notesData[comp].color) delete notesData[comp].color;
-                notesData[comp].lastEdited = new Date().toISOString();
-                fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
-                const newColor = getCompColor(comp);
-                strip.style.background = newColor;
-                picker.value = anyColorToHex(newColor);
-                createNavigation();
-            } catch (err) {
-                logError('Error clearing comp color', err);
-                showToast('Fel vid återställning av färg.', 'error');
-            }
+// Create a unified dropdown menu in the header to hold various tools.
+function createUnifiedMenu() {
+    if (document.getElementById('unified-menu')) return;
+    const header = document.querySelector('header');
+    if (!header) return;
+
+    // ensure header is positioned so dropdown can be absolute
+    header.style.position = header.style.position || 'relative';
+
+    const container = document.createElement('div');
+    container.id = 'unified-menu';
+    container.style.position = 'absolute';
+    container.style.top = '8px';
+    container.style.right = '12px';
+    container.style.zIndex = '10005';
+
+    const btn = document.createElement('button');
+    btn.id = 'unified-menu-btn';
+    btn.type = 'button';
+    btn.textContent = '☰';
+    btn.title = 'Meny';
+    btn.style.padding = '6px 8px';
+    btn.style.borderRadius = '6px';
+    btn.style.border = '1px solid #ccc';
+    btn.style.background = '#fff';
+    btn.style.cursor = 'pointer';
+
+    const dropdown = document.createElement('div');
+    dropdown.id = 'unified-menu-dropdown';
+    dropdown.style.position = 'absolute';
+    dropdown.style.top = '36px';
+    dropdown.style.right = '0';
+    dropdown.style.minWidth = '180px';
+    dropdown.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)';
+    dropdown.style.border = '1px solid #e6e6e6';
+    dropdown.style.borderRadius = '6px';
+    dropdown.style.background = '#fff';
+    dropdown.style.padding = '8px';
+    dropdown.style.display = 'none';
+    dropdown.style.boxSizing = 'border-box';
+
+    const makeItem = (text, handler) => {
+        const it = document.createElement('button');
+        it.type = 'button';
+        it.textContent = text;
+        it.style.display = 'block';
+        it.style.width = '100%';
+        it.style.textAlign = 'left';
+        it.style.padding = '8px';
+        it.style.margin = '0 0 6px 0';
+        it.style.border = 'none';
+        it.style.background = 'transparent';
+        it.style.cursor = 'pointer';
+        it.style.borderRadius = '4px';
+        it.onmouseenter = () => { it.style.background = '#f5f5f5'; };
+        it.onmouseleave = () => { it.style.background = 'transparent'; };
+        it.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            try { handler(); } catch (err) { console.error('Menu handler failed', err); }
+            dropdown.style.display = 'none';
         });
+        return it;
+    };
+
+    // Color picker toggle: trigger existing color toggle if present
+    dropdown.appendChild(makeItem('Färg', () => {
+        try {
+            // ensure color picker exists for current comp
+            if (typeof renderColorPicker === 'function') renderColorPicker(currentComp);
+            const t = document.getElementById('comp-color-toggle');
+            if (t) t.click();
+            else alert('Färgverktyg inte tillgängligt. Välj en komposition först.');
+        } catch (e) { console.error(e); }
+    }));
+
+    // Delete current comp (use existing modal flow)
+    dropdown.appendChild(makeItem('Ta bort komposition', () => {
+        if (!currentComp) { alert('Ingen komposition vald.'); return; }
+        try { showDeleteCompModal(currentComp); } catch (e) { console.error(e); }
+    }));
+
+    // Logs: open logs folder immediately (no floating button)
+    dropdown.appendChild(makeItem('Logs', () => {
+        try {
+            openLogsFolder();
+        } catch (e) { console.error(e); }
+    }));
+
+    // Clipboard: copy all
+    dropdown.appendChild(makeItem('Kopiera alla', () => { try { exportCompsToClipboard(true); } catch (e) { console.error(e); } }));
+    // Clipboard: copy current
+    dropdown.appendChild(makeItem('Kopiera aktuell', () => { try { exportCompsToClipboard(false); } catch (e) { console.error(e); } }));
+    // Clipboard: paste
+    dropdown.appendChild(makeItem('Klistra in från urklipp', () => { try { importCompsFromClipboard(); } catch (e) { console.error(e); } }));
+
+    // attach button and dropdown
+    container.appendChild(btn);
+    container.appendChild(dropdown);
+
+    // prefer the sidebar header for placement (less intrusive). Fall back to top header
+    const sidebarHeader = document.querySelector('.sidebar-header');
+    const headerEl = document.querySelector('header');
+    const parent = sidebarHeader || headerEl;
+    if (parent) {
+        // ensure parent is a positioned container
+        try { parent.style.position = parent.style.position || 'relative'; } catch (e) {}
+        parent.appendChild(container);
+    } else {
+        // last-resort append to body
+        document.body.appendChild(container);
     }
 
-    // set picker value (convert fallback HSL to hex when needed)
-    const val = (notesData[comp] && notesData[comp].color) ? notesData[comp].color : derived;
-    picker.value = anyColorToHex(val);
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    });
+
+    // close when clicking outside
+    document.addEventListener('click', () => {
+        try { dropdown.style.display = 'none'; } catch (e) {}
+    });
 }
 
 // Initialize app when DOM is loaded
@@ -1502,8 +1552,10 @@ document.addEventListener('DOMContentLoaded', () => {
     setupAutoSave();
     setupImagePaste();
 
-    createClipboardToolbar();
-    setTimeout(createLogButtonUI, 50);
+    // Consolidated UI: create a single dropdown menu that exposes
+    // color toggle, delete, logs and clipboard actions. This keeps
+    // existing logic intact and removes floating buttons.
+    createUnifiedMenu();
 
     const addBtn = document.getElementById('add-comp-btn');
     if (addBtn) {
