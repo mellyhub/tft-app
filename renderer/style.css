@@ -101,9 +101,9 @@ header h1 {
 }
 
 .sidebar {
-    width: 220px;
-    min-width: 180px;
-    max-width: 300px;
+    width: 280px;
+    min-width: 220px;
+    max-width: 400px;
     background-color: #252525;
     border-right: 1px solid #404040;
     display: flex;

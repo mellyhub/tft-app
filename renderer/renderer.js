@@ -116,6 +116,7 @@ let currentComp = null;
 let notesData = {};
 let searchQuery = '';
 let activeTagFilter = '';
+let activeFavoriteFilter = false; // true = show only favorites
 // toolbarResizeObserver removed
 
 // System messages (Swedish only)
@@ -623,6 +624,25 @@ function setTagFilter(tag) {
     if (selectEl) selectEl.value = activeTagFilter || '';
 }
 
+function toggleFavorite(comp) {
+    if (!notesData[comp] || typeof notesData[comp] !== 'object') {
+        notesData[comp] = { notes: '', items: [], tags: [], lastEdited: new Date().toISOString() };
+    }
+    notesData[comp].isFavorite = !notesData[comp].isFavorite;
+    notesData[comp].lastEdited = new Date().toISOString();
+    try {
+        fs.writeFileSync(NOTES_FILE, JSON.stringify(notesData, null, 2), 'utf8');
+        createNavigation();
+        // re-render the current comp to update the star button
+        if (currentComp === comp) {
+            switchToComp(comp);
+        }
+    } catch (err) {
+        logError('Error toggling favorite', err);
+        showToast('Fel vid sparande av favorit.', 'error');
+    }
+}
+
 function createTagFilterUI() {
     const nav = document.getElementById('comp-nav');
     if (!nav) return;
@@ -644,6 +664,7 @@ function createTagFilterUI() {
                 <option value="Reroll">Reroll</option>
                 <option value="Fast-8">Fast-8</option>
             </select>
+            <button id="favorite-filter-btn" title="Toggle favorite filter" style="padding:6px 8px;border-radius:4px;border:1px solid #ccc;background:#fff;cursor:pointer;">☆</button>
             <button id="tag-filter-clear" title="Clear filter" style="padding:6px;border-radius:4px;border:1px solid #ccc;background:#fff;">Rensa</button>
         </div>
         <div id="tag-list" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
@@ -651,6 +672,7 @@ function createTagFilterUI() {
 
     const selectEl = document.getElementById('tag-filter-select');
     const clearBtn = document.getElementById('tag-filter-clear');
+    const favBtn = document.getElementById('favorite-filter-btn');
     const tagList = document.getElementById('tag-list');
 
     if (selectEl) {
@@ -665,7 +687,17 @@ function createTagFilterUI() {
     if (clearBtn) {
         clearBtn.addEventListener('click', () => {
             activeTagFilter = '';
+            activeFavoriteFilter = false;
             if (selectEl) selectEl.value = '';
+            if (favBtn) favBtn.textContent = '☆';
+            createNavigation();
+        });
+    }
+    if (favBtn) {
+        favBtn.textContent = activeFavoriteFilter ? '⭐' : '☆';
+        favBtn.addEventListener('click', () => {
+            activeFavoriteFilter = !activeFavoriteFilter;
+            favBtn.textContent = activeFavoriteFilter ? '⭐' : '☆';
             createNavigation();
         });
     }
@@ -699,6 +731,10 @@ function createNavigation() {
             const tags = compData && Array.isArray(compData.tags) ? compData.tags.map(t => (t || '').toLowerCase()) : [];
             if (!tags.includes(activeTagFilter.toLowerCase())) return false;
         }
+        if (activeFavoriteFilter) {
+            const compData = notesData[comp] && typeof notesData[comp] === 'object' ? notesData[comp] : null;
+            if (!compData || !compData.isFavorite) return false;
+        }
         return true;
     });
 
@@ -726,9 +762,13 @@ function createNavigation() {
             ? highlightSearchMatches(capitalizeCompName(comp), searchQuery)
             : capitalizeCompName(comp);
 
+        // Show star indicator for favorited comps
+        const isFav = compData && compData.isFavorite ? true : false;
+        const favIcon = isFav ? '⭐ ' : '';
+
         // Do not show last-edited in the nav; it's displayed inside the comp view instead
         // Tags are intentionally omitted from the nav list for a cleaner UI
-        button.innerHTML = `<div class="nav-title">${titleHtml}</div>`;
+        button.innerHTML = `<div class="nav-title">${favIcon}${titleHtml}</div>`;
 
         // left accent color
         const derivedColor = getCompColor(comp);
@@ -849,6 +889,41 @@ function switchToComp(comp) {
         }
     }
 
+    // add favorite button next to title
+    let favBtn = document.getElementById('comp-favorite-btn');
+    const compData = notesData[comp] && typeof notesData[comp] === 'object' ? notesData[comp] : null;
+    const isFav = compData && compData.isFavorite ? true : false;
+    if (!favBtn) {
+        favBtn = document.createElement('button');
+        favBtn.id = 'comp-favorite-btn';
+        favBtn.title = 'Toggle favorite';
+        favBtn.textContent = isFav ? '⭐' : '☆';
+        favBtn.style.padding = '2px 6px';
+        favBtn.style.border = '1px solid #ddd';
+        favBtn.style.background = '#fff';
+        favBtn.style.cursor = 'pointer';
+        favBtn.style.borderRadius = '4px';
+        favBtn.style.fontSize = '0.9rem';
+        favBtn.style.verticalAlign = 'middle';
+        favBtn.style.marginLeft = '6px';
+        if (titleEl) {
+            if (titleEl.style.display !== 'inline-flex') {
+                titleEl.style.display = 'inline-flex';
+                titleEl.style.alignItems = 'center';
+                titleEl.style.gap = '6px';
+            }
+            titleEl.appendChild(favBtn);
+        }
+    } else {
+        // update star icon based on current favorite status
+        favBtn.textContent = isFav ? '⭐' : '☆';
+    }
+    favBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleFavorite(comp);
+    };
+
     function finishRename(oldKey, newKeyRaw) {
         const newKey = (newKeyRaw || '').toString().trim().toLowerCase();
         if (!newKey) {
@@ -911,7 +986,8 @@ function switchToComp(comp) {
                 ev.preventDefault();
                 const newName = input.value.trim();
                 const ok = finishRename(comp, newName);
-                if (ok) return; // switchToComp already done
+                // Always cleanup on Enter, whether rename succeeded or failed.
+                // If successful, switchToComp will re-render the view anyway.
                 cleanupInput();
             } else if (ev.key === 'Escape') {
                 cleanupInput();
