@@ -9,7 +9,7 @@
     "tags": [
       "Reroll"
     ],
-    "lastEdited": "2025-11-26T14:03:51.017Z",
+    "lastEdited": "2025-11-26T18:19:52.191Z",
     "color": "#607d8b"
   },
   "ionia": {
@@ -22,7 +22,7 @@
     "tags": [
       "Fast-8"
     ],
-    "lastEdited": "2025-11-26T14:03:24.115Z",
+    "lastEdited": "2025-11-26T22:02:12.338Z",
     "color": "#607d8b"
   },
   "targon asol": {
@@ -36,7 +36,7 @@
     "tags": [
       "Fast-8"
     ],
-    "lastEdited": "2025-11-26T14:03:41.494Z",
+    "lastEdited": "2025-11-26T18:20:04.920Z",
     "color": "#607d8b"
   },
   "slayer": {
@@ -49,7 +49,7 @@
     "tags": [
       "Fast-8"
     ],
-    "lastEdited": "2025-11-26T14:03:38.239Z",
+    "lastEdited": "2025-11-26T18:20:07.569Z",
     "color": "#f44336"
   },
   "noxus": {
@@ -58,7 +58,7 @@
     "tags": [
       "Fast-8"
     ],
-    "lastEdited": "2025-11-26T16:09:33.503Z",
+    "lastEdited": "2025-11-26T18:20:33.404Z",
     "color": "#e91e63"
   },
   "demacia": {
@@ -69,7 +69,7 @@
     "tags": [
       "Fast-8"
     ],
-    "lastEdited": "2025-11-26T16:09:22.667Z",
+    "lastEdited": "2025-11-26T18:21:12.590Z",
     "color": "#607d8b"
   },
   "void": {
@@ -79,12 +79,14 @@
       "Bow",
       "Rod"
     ],
-    "tags": [],
-    "lastEdited": "2025-11-26T15:38:04.856Z",
+    "tags": [
+      "Fast-8"
+    ],
+    "lastEdited": "2025-11-26T18:20:04.464Z",
     "color": "#9c27b0"
   },
   "shadow isles": {
-    "notes": "- viego reroll: https://x.com/robinsongz/status/1991543224591348107\n- kan spela runt viego + kalista\n- viego behöver edge of night + sustain (hoj, bt, gunblade)\n- andra bra viego items: rageblade, titans, GS, rfc<div><img src=\"../data/images/image-1763918669127.png\" alt=\"pasted-image\"></div>",
+    "notes": "- kan spela runt viego + kalista\n- viego behöver edge of night + sustain (hoj, bt, gunblade)\n- andra bra viego items: rageblade, titans, GS, rfc<div><img src=\"../data/images/image-1763918669127.png\" alt=\"pasted-image\"></div>",
     "items": [
       "Sword",
       "Glove",
@@ -93,7 +95,7 @@
     "tags": [
       "Reroll"
     ],
-    "lastEdited": "2025-11-26T14:03:32.923Z",
+    "lastEdited": "2025-11-27T11:55:24.753Z",
     "color": "#607d8b"
   },
   "shurima": {
@@ -102,7 +104,7 @@
     "tags": [
       "Fast-8"
     ],
-    "lastEdited": "2025-11-26T14:03:36.108Z",
+    "lastEdited": "2025-11-26T18:20:19.411Z",
     "color": "#ff9800"
   },
   "bilgewater": {
@@ -113,7 +115,7 @@
     "tags": [
       "Reroll"
     ],
-    "lastEdited": "2025-11-26T16:09:27.632Z",
+    "lastEdited": "2025-11-26T18:21:29.190Z",
     "color": "#795548"
   },
   "xin hero augment": {
@@ -125,7 +127,7 @@
     "tags": [
       "Reroll"
     ],
-    "lastEdited": "2025-11-26T14:03:45.124Z",
+    "lastEdited": "2025-11-26T18:19:51.365Z",
     "color": "#607d8b"
   },
   "rumble hero augment": {
@@ -141,7 +143,7 @@
     "tags": [
       "Fast-8"
     ],
-    "lastEdited": "2025-11-26T16:09:23.339Z",
+    "lastEdited": "2025-11-26T18:21:13.237Z",
     "color": "#607d8b"
   },
   "freljord ashe trynd reroll": {
@@ -154,7 +156,7 @@
     "tags": [
       "Reroll"
     ],
-    "lastEdited": "2025-11-26T16:09:18.888Z",
+    "lastEdited": "2025-11-26T22:53:40.750Z",
     "color": "#03a9f4"
   },
   "freljord fast 8 yunara": {
@@ -167,7 +169,7 @@
     "tags": [
       "Fast-8"
     ],
-    "lastEdited": "2025-11-26T16:09:22.143Z",
+    "lastEdited": "2025-11-26T22:55:32.468Z",
     "color": "#03a9f4"
   },
   "piltover t-hex": {
@@ -176,19 +178,19 @@
     "tags": [
       "Fast-8"
     ],
-    "lastEdited": "2025-11-26T16:09:34.134Z",
+    "lastEdited": "2025-11-26T18:20:31.435Z",
     "color": "#3f51b5"
   },
   "ixtal bard reroll": {
     "notes": "<div>- https://x.com/clementkchu/status/1993416940703170911</div>- bra med pandoras bench<div>- stoneplate slam för tidig skarner<br><div>- brock wincon</div></div><div><img src=\"../data/images/image-1764159620413.png\" alt=\"pasted-image\"></div>",
     "items": [],
     "tags": [],
-    "lastEdited": "2025-11-26T16:09:31.748Z",
+    "lastEdited": "2025-11-26T22:02:13.217Z",
     "color": "#ffeb3b",
     "isFavorite": false
   },
   "sion bard reroll": {
-    "notes": "- https://x.com/techzzeng/status/1991309947787973016\n- sion bis spirit visage, dclaw, bramble\n- artifacts/radiants: talisman, void gauntlet, darkin aegis<div><img src=\"../data/images/image-1763918569406.png\" alt=\"pasted-image\"></div>",
+    "notes": "- sion bis spirit visage, dclaw, bramble\n- artifacts/radiants: talisman, void gauntlet, darkin aegis<div>- https://x.com/techzzeng/status/1991309947787973016<br><div><img src=\"../data/images/image-1763918569406.png\" alt=\"pasted-image\"></div></div>",
     "items": [
       "Bow",
       "Cloak",
@@ -197,14 +199,14 @@
     "tags": [
       "Reroll"
     ],
-    "lastEdited": "2025-11-26T15:37:28.596Z",
+    "lastEdited": "2025-11-26T18:26:10.427Z",
     "color": "#ffeb3b"
   },
   "ixtal ahri reroll": {
-    "notes": "- https://x.com/clementkchu/status/1993416942582182321<div>- https://x.com/techzzeng/status/1993032237449986097<br><div>- commerce core angle</div><div>- items på ahri eller milio beroende på vad du hittar<br><div><img src=\"../data/images/image-1764165512483.png\" alt=\"pasted-image\"></div></div><div><img src=\"../data/images/image-1764165966172.png\" alt=\"pasted-image\"></div></div>",
+    "notes": "<div><div>- commerce core angle</div><div>- items på ahri eller milio beroende på vad du hittar</div><div>- https://x.com/clementkchu/status/1993416942582182321\n</div><div>- https://x.com/techzzeng/status/1993032237449986097<br><div><img src=\"../data/images/image-1764165512483.png\" alt=\"pasted-image\"></div></div><div><img src=\"../data/images/image-1764165966172.png\" alt=\"pasted-image\"></div></div>",
     "items": [],
     "tags": [],
-    "lastEdited": "2025-11-26T16:09:13.350Z",
+    "lastEdited": "2025-11-27T11:55:44.906Z",
     "color": "#4caf50",
     "isFavorite": true
   },
@@ -212,16 +214,38 @@
     "notes": "<div>- bis: titans, BT, hoj</div><div>- cap 5 zaun + 4 jugg eller azir + 4 disruptor</div><img src=\"../data/images/image-1764165699570.png\" alt=\"pasted-image\">",
     "items": [],
     "tags": [],
-    "lastEdited": "2025-11-26T16:09:12.079Z",
+    "lastEdited": "2025-11-27T10:37:05.841Z",
     "color": "#4caf50",
     "isFavorite": true
   },
   "juggernaut disruptors": {
-    "notes": "<div>- https://x.com/clementkchu/status/1992644337306644528</div><div>- bra AP default line</div><div><img src=\"../data/images/image-1764166069263.png\" alt=\"pasted-image\" style=\"font-size: clamp(0.9rem, 1.5vw, 1rem); letter-spacing: 0.01em;\"></div><div><img src=\"../data/images/image-1764166196124.png\" alt=\"pasted-image\"></div><div><img src=\"../data/images/image-1764166219971.png\" alt=\"pasted-image\"></div>",
+    "notes": "<div><span style=\"font-size: clamp(0.9rem, 1.5vw, 1rem); letter-spacing: 0.01em;\">- bra AP default line</span><br></div><div><span style=\"font-size: clamp(0.9rem, 1.5vw, 1rem); letter-spacing: 0.01em;\">- 5 loss stage 2 för tidig singed</span></div><div><span style=\"font-size: clamp(0.9rem, 1.5vw, 1rem); letter-spacing: 0.01em;\">- singed bis: morello + bt + void/spark</span></div><div><span style=\"font-size: clamp(0.9rem, 1.5vw, 1rem); letter-spacing: 0.01em;\">- https://x.com/clementkchu/status/1992644337306644528</span></div><div><img src=\"../data/images/image-1764166196124.png\" alt=\"pasted-image\"></div><div><img src=\"../data/images/image-1764166219971.png\" alt=\"pasted-image\"></div>",
     "items": [],
     "tags": [],
-    "lastEdited": "2025-11-26T16:09:32.869Z",
+    "lastEdited": "2025-11-27T11:55:36.045Z",
     "isFavorite": true,
     "color": "#4caf50"
+  },
+  "warwick": {
+    "notes": "- https://x.com/demacianraptor/status/1993373987313705297<div><img src=\"../data/images/image-1764181164646.png\" alt=\"pasted-image\"></div>",
+    "items": [
+      "Sword",
+      "Belt",
+      "Bow"
+    ],
+    "tags": [
+      "Fast-8"
+    ],
+    "lastEdited": "2025-11-27T10:36:04.217Z",
+    "color": "#4caf50",
+    "isFavorite": true
+  },
+  "shadow isles warden flex": {
+    "notes": "<div>- shadow isle opener --&gt; pivot</div><img src=\"../data/images/image-1764181606048.png\" alt=\"pasted-image\">",
+    "items": [],
+    "tags": [],
+    "lastEdited": "2025-11-27T11:37:33.315Z",
+    "color": "#607d8b",
+    "isFavorite": true
   }
 }
